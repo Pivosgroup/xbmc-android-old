@@ -400,6 +400,20 @@ case $host in
      ARCH="powerpc64-linux"
      AC_SUBST(ARCH_DEFINES, "-DTARGET_POSIX -DTARGET_LINUX -D_LINUX -D_POWERPC64")
      ;;
+  arm-none-linux-gnueabi*)
+     target_platform=target_amlogic
+     use_texturepacker_native=yes
+     AC_SUBST(ARCH_DEFINES, "-DTARGET_AMLOGIC")
+     ARCH="arm"
+     PYTHON_VERSION="2.6"
+     PYTHON_LDFLAGS="-L${prefix}/lib -lpython2.6"
+     PYTHON_CPPFLAGS="-I${prefix}/include/python2.6"
+     PYTHON_SITE_PKG="${prefix}/lib/python2.6/site-packages"
+     PYTHON_NOVERSIONCHECK="no-check"
+     AC_DEFINE(HAS_EGLGLES, [1], [Define if supporting EGL based GLES Framebuffer])
+     CFLAGS="$CFLAGS -Wno-psabi -Wa,-mno-warn-deprecated"
+     CXXFLAGS="$CXXFLAGS -Wno-psabi -Wa,-mno-warn-deprecated"
+     ;;
   arm*-*-linux-gnu*)
      use_texturepacker=no
      ARCH="arm"
@@ -484,8 +498,9 @@ elif test "$use_arch" = "arm"; then
         use_cpu=cortex-a8])
   else
     # Compile for ARMv7a architecture, CortexA8 cpu and NEON coprocessor
-    CFLAGS+=" -Wa,-march=armv7a -mcpu=cortex-a8 -mfpu=neon -mvectorize-with-neon-quad"
-    CXXFLAGS+=" -Wa,-march=armv7a -mcpu=cortex-a8 -mfpu=neon -mvectorize-with-neon-quad"
+    use_cpu=cortex-a9
+    CFLAGS+=" -Wa,-march=armv7a -mcpu=cortex-a9 -mfpu=neon -mvectorize-with-neon-quad"
+    CXXFLAGS+=" -Wa,-march=armv7a -mcpu=cortex-a9 -mfpu=neon -mvectorize-with-neon-quad"
     FFMPEG_EXTRACFLAGS+=" -mfpu=neon"
   fi
 fi
@@ -534,6 +549,7 @@ AC_LANG_POP([C++])
 # Checks for platforms libraries.
 if test "$use_gles" = "yes"; then
   use_gl="no"
+  USE_OPENGLES=1
   # GLES overwrites GL if both set to yes.
   if test "$host_vendor" = "apple" ; then
     AC_DEFINE([HAVE_LIBEGL],[1],["Define to 1 if you have the `EGL' library (-lEGL)."])
@@ -594,8 +610,8 @@ AC_CHECK_LIB([tiff],        [main],, AC_MSG_ERROR($missing_library))
 AC_CHECK_LIB([pthread],     [main],, AC_MSG_ERROR($missing_library))
 AC_CHECK_LIB([lzo2],        [main],, AC_MSG_ERROR($missing_library))
 AC_CHECK_LIB([z],           [main],, AC_MSG_ERROR($missing_library))
-AC_CHECK_LIB([ssl],         [main],, AC_MSG_ERROR($missing_library))
 AC_CHECK_LIB([crypto],      [main],, AC_MSG_ERROR($missing_library))
+AC_CHECK_LIB([ssl],         [main],, AC_MSG_ERROR($missing_library))
 AC_CHECK_LIB([mysqlclient], [main],, AC_MSG_ERROR($missing_library))
 AC_CHECK_LIB([ssh],         [sftp_tell64],, AC_MSG_RESULT([Could not find suitable version of libssh]))
 AC_CHECK_LIB([smbclient],   [main],, AC_MSG_ERROR($missing_library))

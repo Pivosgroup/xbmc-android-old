@@ -124,7 +124,7 @@
  * Linux Specific
  *****************/
 
-#if defined(_LINUX) && !defined(__APPLE__)
+#if defined(_LINUX) && !defined(__APPLE__) && !defined(TARGET_AMLOGIC)
 #ifndef HAS_SDL_OPENGL
 #define HAS_SDL_OPENGL
 #endif
@@ -148,6 +148,32 @@
 #define HAS_XRANDR
 #endif
 #define HAS_AIRPLAY
+#endif
+
+/********************
+ * AMLOGIC     *
+ ********************/
+#if defined(TARGET_AMLOGIC)
+#undef HAS_SDL
+#undef HAS_SDL_AUDIO
+#undef HAS_SDL_OPENGL
+#undef HAS_SDL_JOYSTICK
+#undef HAS_SDL_WIN_EVENTS
+#undef HAS_DVD_DRIVE
+#undef HAS_ZEROCONF
+#undef HAS_AVAHI
+//#undef HAS_DBUS
+//#undef HAS_DBUS_SERVER
+#undef HAS_CDDA_RIPPER
+#undef HAS_RTORRENT
+//#undef HAS_REMOTECONTROL
+
+#define HAS_EGL
+#define HAS_GLES 2
+#define HAS_XBMC_MUTEX
+#define HAS_LINUX_NETWORK
+#define HAS_LINUX_EVENTS
+#define HAS_LIRC
 #endif
 
 #ifdef HAVE_LIBSSH
