@@ -22,7 +22,7 @@
 
 #ifdef HAS_EGLGLES
 
-#include "WinSystemEGLGLES.h"
+#include "WinSystemGLES.h"
 #include "filesystem/SpecialProtocol.h"
 #include "settings/Settings.h"
 #include "guilib/Texture.h"
@@ -30,8 +30,6 @@
 #include "WinBindingEGL.h"
 
 #include <vector>
-#include <linux/fb.h>
-#include <sys/ioctl.h>
 
 ////////////////////////////////////////////////////////////////////////////////////////////
 CWinSystemGLES::CWinSystemGLES() : CWinSystemBase()
@@ -49,33 +47,6 @@ CWinSystemGLES::~CWinSystemGLES()
 
 bool CWinSystemGLES::InitWindowSystem()
 {
-/*
-  // Open the framebuffer device
-  int fbdev = open("/dev/fb1", O_RDWR);
-  if (fbdev < 0)
-  {
-    CLog::Log(LOGERROR, "WinSystemFBDEV::InitWindowSystem:"
-      "Could not open framebuffer device, %s", strerror(errno));
-    return false;
-  }
-
-  // Load framebuffer properties
-  struct fb_var_screeninfo var_screeninfo;
-  struct fb_fix_screeninfo fix_screeninfo;
-
-  ioctl(fbdev, FBIOGET_VSCREENINFO, &var_screeninfo);
-  ioctl(fbdev, FBIOGET_FSCREENINFO, &fix_screeninfo);
-  CLog::Log(LOGDEBUG, "Framebuffer device uses %d bytes of memory.",
-    fix_screeninfo.smem_len);
-  CLog::Log(LOGDEBUG, "Video mode: %dx%d with %d bits per pixel.",
-    var_screeninfo.xres, var_screeninfo.yres, var_screeninfo.bits_per_pixel);
-
-  m_fb_width  =  var_screeninfo.xres;
-  m_fb_height =  var_screeninfo.yres;
-  m_fb_bpp    = (var_screeninfo.bits_per_pixel+7)/8;
-
-  close(fbdev);
-*/
   m_fb_width  = 1280;
   m_fb_height = 720;
   m_fb_bpp    = 8;
@@ -164,7 +135,7 @@ bool CWinSystemGLES::IsExtSupported(const char* extension)
   return m_eglBinding->IsExtSupported(extension);
 }
 
-bool CWinSystemGLES::PresentRenderImpl()
+bool CWinSystemGLES::PresentRenderImpl(const CDirtyRegionList &dirty)
 {
   m_eglBinding->SwapBuffers();
 

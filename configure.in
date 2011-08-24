@@ -20,7 +20,9 @@ AC_DEFUN([XB_FIND_SONAME],
 [
   if [[ "$host_vendor" != "apple" ]]; then
     AC_MSG_CHECKING([for lib$2 soname])
-    $1_SONAME=$( $CC -print-file-name=lib$2.so | \
+    search_lib_path="$prefix/lib:$LIBRARY_PATH"
+    echo $search_lib_path
+    $1_SONAME=$( LIBRARY_PATH=$search_lib_path gcc -print-file-name=lib$2.so | \
       while read output; do objdump -p $output | \
         grep "SONAME" | \
         sed -e 's/  *SONAME  *//'; done 2> /dev/null )
@@ -403,8 +405,9 @@ case $host in
   arm-none-linux-gnueabi*)
      target_platform=target_amlogic
      use_texturepacker_native=yes
-     AC_SUBST(ARCH_DEFINES, "-DTARGET_AMLOGIC")
+     AC_SUBST(ARCH_DEFINES, "-DTARGET_POSIX -DTARGET_LINUX -DTARGET_AMLOGIC -D_LINUX -D_ARMEL")
      ARCH="arm"
+     use_arch="arm"
      PYTHON_VERSION="2.6"
      PYTHON_LDFLAGS="-L${prefix}/lib -lpython2.6"
      PYTHON_CPPFLAGS="-I${prefix}/include/python2.6"
@@ -677,19 +680,19 @@ if test "$host_vendor" = "apple" ; then
     AC_CHECK_LIB([SDL],      [main],, AC_MSG_ERROR($missing_library))
   fi
 else
-  AC_CHECK_LIB([SDL_mixer],  [main],, AC_MSG_ERROR($missing_library))
   AC_CHECK_LIB([dl],         [main],, AC_MSG_ERROR($missing_library))
   AC_CHECK_LIB([resolv],     [main],, AC_MSG_ERROR($missing_library))
   AC_CHECK_LIB([jasper],     [main],, AC_MSG_ERROR($missing_library)) # check for cximage
   AC_CHECK_LIB([rt],         [clock_gettime],, AC_MSG_ERROR($missing_library))
-  AC_CHECK_LIB([SDL_image],  [main],, AC_MSG_ERROR($missing_library))
 
   PKG_CHECK_MODULES([ALSA],  [alsa],
     [INCLUDES="$INCLUDES $ALSA_CFLAGS"; LIBS="$LIBS $ALSA_LIBS"; use_alsa=yes],
     AC_MSG_NOTICE($alsa_not_found); use_alsa=no)
-  PKG_CHECK_MODULES([ENCA],  [enca],
-    [INCLUDES="$INCLUDES $ENCA_CFLAGS"; LIBS="$LIBS $ENCA_LIBS"],
-    AC_MSG_ERROR($missing_library))
+  #PKG_CHECK_MODULES([ENCA],  [enca],
+  #  [INCLUDES="$INCLUDES $ENCA_CFLAGS"; LIBS="$LIBS $ENCA_LIBS"],
+  #  AC_MSG_ERROR($missing_library))
+
+if test "$target_platform" != "target_amlogic"; then
   PKG_CHECK_MODULES([XT],    [xt],
     [INCLUDES="$INCLUDES $XT_CFLAGS"; LIBS="$LIBS $XT_LIBS"],
     AC_MSG_ERROR($missing_library))
@@ -699,12 +702,20 @@ else
   PKG_CHECK_MODULES([XMU],   [xmu],
     [INCLUDES="$INCLUDES $XMU_CFLAGS"; LIBS="$LIBS $XMU_LIBS"],
     AC_MSG_ERROR($missing_library))
+fi
+
   PKG_CHECK_MODULES([DBUS],  [dbus-1],
     [INCLUDES="$INCLUDES $DBUS_CFLAGS"; LIBS="$LIBS $DBUS_LIBS"],
     AC_MSG_ERROR($missing_library))
+
+if test "$target_platform" != "target_amlogic"; then
   PKG_CHECK_MODULES([SDL],   [sdl],
     [INCLUDES="$INCLUDES $SDL_CFLAGS"; LIBS="$LIBS $SDL_LIBS"],
     AC_MSG_ERROR($missing_library))
+  AC_CHECK_LIB([SDL_image],  [main],, AC_MSG_ERROR($missing_library))
+  AC_CHECK_LIB([SDL_mixer],  [main],, AC_MSG_ERROR($missing_library))
+fi
+
 fi
 
 XB_FIND_SONAME([MAD],         [mad])
@@ -717,10 +728,15 @@ XB_FIND_SONAME([VORBISFILE],  [vorbisfile])
 XB_FIND_SONAME([MODPLUG],     [modplug])
 XB_FIND_SONAME([ASS],         [ass])
 XB_FIND_SONAME([MPEG2],       [mpeg2])
-XB_FIND_SONAME([PLIST],       [plist])
+#XB_FIND_SONAME([PLIST],       [plist])
 
 # WebServer
 if test "$use_webserver" = "yes"; then
+if test "$target_platform" = "target_amlogic"; then
+  AC_CHECK_LIB([intl],        [main],, AC_MSG_ERROR($missing_library))
+  AC_CHECK_LIB([gpg-error],   [main],, AC_MSG_ERROR($missing_library))
+  AC_CHECK_LIB([gcrypt],      [main],, AC_MSG_ERROR($missing_library))
+fi
   AC_CHECK_LIB([microhttpd],  [main],, AC_MSG_ERROR($missing_library))
 fi
 

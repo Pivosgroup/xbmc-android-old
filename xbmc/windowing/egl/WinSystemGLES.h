@@ -57,7 +57,7 @@ public:
   virtual bool  Show(bool raise = true);
 
 protected:
-  virtual bool  PresentRenderImpl();
+  virtual bool  PresentRenderImpl(const CDirtyRegionList &dirty);
   virtual void  SetVSyncImpl(bool enable);
   void                  *m_display;
   fbdev_window          *m_window;

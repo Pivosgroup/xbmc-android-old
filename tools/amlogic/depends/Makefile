@@ -9,7 +9,7 @@ SUBDIRS = \
 	libpng libjpeg tiff jasper \
 	libogg libvorbis libflac libmad fribidi libwavpack libmpeg2 \
 	libass libcdio libsamplerate \
-	libmicrohttpd libmodplug librtmp libbluray \
+	libmicrohttpd libmodplug librtmp libbluray yajl \
 	samba dbus python26 mysqlclient boost xbmc \
 
 IMAGENAME = xbmc-aml-`date +'%y%m%d'`

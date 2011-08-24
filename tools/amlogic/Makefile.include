@@ -7,6 +7,6 @@ BASE_URL=http://mirrors.xbmc.org/build-deps/darwin-libs
 TARBALLS_LOCATION=/opt/xbmc-tarballs
 RETRIEVE_TOOL=/usr/bin/curl
 RETRIEVE_TOOL_FLAGS=-Ls --create-dirs --output $(TARBALLS_LOCATION)/$(ARCHIVE)
-ARCHIVE_TOOL=PATH=/bin /bin/tar
+ARCHIVE_TOOL=/bin/tar
 ARCHIVE_TOOL_FLAGS=xf
 JOBS=1

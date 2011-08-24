@@ -30,6 +30,7 @@ $(LIBDYLIB): $(SOURCE)
 
 .installed:
 	make -C $(SOURCE) install PREFIX=$(PREFIX)
+	rm -rf $(PREFIX)/bin/bz*
 	touch $@
 
 clean:
