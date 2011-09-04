@@ -30,7 +30,6 @@
 #include "utils/TimeUtils.h"
 #include "input/XBMC_keytable.h"
 
-
 CKeyboardStat g_Keyboard;
 
 CKeyboardStat::CKeyboardStat()
