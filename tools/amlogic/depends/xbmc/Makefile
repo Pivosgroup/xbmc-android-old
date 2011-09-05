@@ -7,7 +7,7 @@ export SDKSTAGE
 export ALSA_CFLAGS=-I$(SDKSTAGE)/usr/include/alsa
 export PKG_CONFIG_PATH=$(PREFIX)/bin/pkg-config
 CONFIGURE=./configure --prefix=$(PREFIX) --host=$(HOST) \
-  --enable-external-python --enable-gles --disable-x11 --disable-xrandr \
+  --enable-external-python --enable-gles --disable-sdl --disable-x11 --disable-xrandr \
   --disable-optical-drive --disable-dvdcss
 
 all: configure
