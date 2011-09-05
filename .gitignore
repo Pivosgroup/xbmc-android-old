@@ -59,11 +59,6 @@ config.log
 /tools/darwin/depends/python26/Makefile
 /tools/darwin/depends/**/.gitignore
 /tools/darwin/depends/**/.installed
-/tools/osx/osx-depends/**/.gitignore
-/tools/osx/osx-depends/**/.installed
-/tools/osx/ios-depends/**/.gitignore
-/tools/osx/ios-depends/**/.installed
-/tools/osx/ios-depends/**/.compiled
 
 .libs/
 .deps/
