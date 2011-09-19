@@ -31,7 +31,6 @@ SRCS=AddonsDirectory.cpp \
      FileRTV.cpp \
      FileShoutcast.cpp \
      FileSFTP.cpp \
-     FileSmb.cpp \
      FileSpecialProtocol.cpp \
      FileTuxBox.cpp \
      FileUDF.cpp \
@@ -70,7 +69,6 @@ SRCS=AddonsDirectory.cpp \
      SIDFileDirectory.cpp \
      Slingbox.cpp \
      SmartPlaylistDirectory.cpp \
-     SMBDirectory.cpp \
      SourcesDirectory.cpp \
      SpecialProtocol.cpp \
      SpecialProtocolDirectory.cpp \
@@ -85,18 +83,27 @@ SRCS=AddonsDirectory.cpp \
      VTPSession.cpp \
      ZeroconfDirectory.cpp \
      ZipDirectory.cpp \
-     ZipManager.cpp \
+     ZipManager.cpp
 
 ifeq (@HAVE_XBMC_NONFREE@,1)
-SRCS+=FileRar.cpp \
-      RarDirectory.cpp \
-      RarManager.cpp \
-
+SRCS+=FileRar.cpp
+SRCS+=RarDirectory.cpp
+SRCS+=RarManager.cpp
 endif
-ifeq (@USE_LIBNFS@,1)
-SRCS+=FileNFS.cpp \
-      NFSDirectory.cpp \
 
+ifeq (@USE_LIBSMBCLIENT@,1)
+SRCS+=FileSmb.cpp
+SRCS+=SMBDirectory.cpp
+endif
+
+ifeq (@USE_LIBNFS@,1)
+SRCS+=FileNFS.cpp
+SRCS+=NFSDirectory.cpp
+endif
+
+ifeq (@USE_LIBAFPCLIENT@,1)
+SRCS+=FileAFP.cpp
+SRCS+=AFPDirectory.cpp
 endif
 
 INCLUDES+=-I@abs_top_srcdir@/lib/libUPnP/Platinum/Source/Core \
