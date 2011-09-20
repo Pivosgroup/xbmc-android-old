@@ -27,6 +27,11 @@
 #include "filesystem/File.h"
 #include "utils/log.h"
 #include "JpegIO.h"
+#include "XBTF.h"
+
+#if defined(TARGET_AMLOGIC)
+#include <amljpeg.h>
+#endif
 
 /*Override libjpeg's error function to avoid an exit() call.*/
 static void jpeg_error_exit (j_common_ptr cinfo)
@@ -239,8 +244,60 @@ bool CJpegIO::GetExif()
   return false;
 }
 
+bool CJpegIO::HWDecode(const unsigned char *pixels)
+{
+  bool rtn = false;
+#if defined(TARGET_AMLOGIC)
+  {
+    aml_image_info_t *image_info;
+
+    amljpeg_init();
+    // mode 0 = keep ratio  
+    //      1 = crop image
+    //      2 = stretch image
+    int mode = 0;
+    // flag 0 = disable display 
+    //      1 = enable display with antiflicking disabled
+    //      2 = enable display with antiflicking enabled
+    int flag = 0;
+    image_info = read_jpeg_image((char*)m_texturePath.c_str(), m_width, m_height, mode, flag);
+    if (image_info)
+    {
+      unsigned char *src = (unsigned char*)image_info->data;
+      unsigned char *dst = (unsigned char*)pixels;
+      for (unsigned int y = 0; y < m_height; y++)
+      {
+        unsigned char *dst2 = dst;
+        unsigned char *src2 = src;
+        for (unsigned int x = 0; x < m_width; x++)
+        {
+          *dst2++ = *src2++;
+          *dst2++ = *src2++;
+          *dst2++ = *src2++;
+          src2++;
+        }
+        src += image_info->bytes_per_line;
+        dst += m_pitch;
+      }
+      free(image_info->data);
+      free(image_info);
+    }
+    else
+    {
+      rtn = false;
+    }
+    amljpeg_exit();     
+  }
+#endif
+  return(rtn);
+}
+
 bool CJpegIO::Decode(const unsigned char *pixels)
 {
+#if defined(TARGET_AMLOGIC)
+  if (HWDecode(pixels))
+    return true;
+#endif
   //requires a pre-allocated buffer of size pitch*3
   unsigned char *dst = (unsigned char *) pixels;
   try

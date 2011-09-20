@@ -48,6 +48,8 @@ public:
 
 protected:
   bool           GetExif();
+  bool           HWDecode(const unsigned char *pixels);
+
   unsigned char  *m_inputBuff;
   unsigned int   m_inputBuffSize;
   unsigned int   m_minx;
