@@ -30,7 +30,10 @@
 #include "XBTF.h"
 
 #if defined(TARGET_AMLOGIC)
+#include "filesystem/SpecialProtocol.h"
 #include <amljpeg.h>
+// we need this to serialize access to hw image decoder.
+static CCriticalSection gHWLoaderSection;
 #endif
 
 /*Override libjpeg's error function to avoid an exit() call.*/
@@ -249,6 +252,8 @@ bool CJpegIO::HWDecode(const unsigned char *pixels)
   bool rtn = false;
 #if defined(TARGET_AMLOGIC)
   {
+    CSingleLock lock(gHWLoaderSection);
+
     aml_image_info_t *image_info;
 
     amljpeg_init();
@@ -260,9 +265,16 @@ bool CJpegIO::HWDecode(const unsigned char *pixels)
     //      1 = enable display with antiflicking disabled
     //      2 = enable display with antiflicking enabled
     int flag = 0;
-    image_info = read_jpeg_image((char*)m_texturePath.c_str(), m_width, m_height, mode, flag);
+    image_info = read_jpeg_image((char*)CSpecialProtocol::TranslatePath(m_texturePath).c_str(),
+      m_width, m_height, mode, flag);
     if (image_info)
     {
+      printf("output image width is %d\n",          image_info->width);
+      printf("output image height is %d\n",         image_info->height);
+      printf("output image depth is %d\n",          image_info->depth);
+      printf("output image bytes_per_line is %d\n", image_info->bytes_per_line);
+      printf("output image nbytes   is %d\n",       image_info->nbytes);
+
       unsigned char *src = (unsigned char*)image_info->data;
       unsigned char *dst = (unsigned char*)pixels;
       for (unsigned int y = 0; y < m_height; y++)
@@ -296,7 +308,10 @@ bool CJpegIO::Decode(const unsigned char *pixels)
 {
 #if defined(TARGET_AMLOGIC)
   if (HWDecode(pixels))
+  {
+    jpeg_destroy_decompress(&m_cinfo);
     return true;
+  }
 #endif
   //requires a pre-allocated buffer of size pitch*3
   unsigned char *dst = (unsigned char *) pixels;
