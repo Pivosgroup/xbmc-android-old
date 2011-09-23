@@ -28,7 +28,6 @@
 #include "utils/log.h"
 #include "XBTF.h"
 #include "JpegIO.h"
-#include "XBTF.h"
 
 #if defined(TARGET_AMLOGIC)
 #include "filesystem/SpecialProtocol.h"
@@ -247,34 +246,35 @@ bool CJpegIO::GetExif()
   return false;
 }
 
-bool CJpegIO::HWDecode(const unsigned char *pixels)
+bool CJpegIO::HWDecode(const unsigned char *pixels, unsigned int pitch, unsigned int format)
 {
   bool rtn = false;
 #if defined(TARGET_AMLOGIC)
+  CSingleLock lock(gHWLoaderSection);
+
+  aml_image_info_t *image_info;
+
+  amljpeg_init();
+  // mode 0 = keep ratio
+  //      1 = crop image
+  //      2 = stretch image
+  int mode = 0;
+  // flag 0 = disable display
+  //      1 = enable display with antiflicking disabled
+  //      2 = enable display with antiflicking enabled
+  int flag = 0;
+  image_info = read_jpeg_image((char*)CSpecialProtocol::TranslatePath(m_texturePath).c_str(),
+    m_width, m_height, mode, flag);
+  if (image_info)
   {
-    CSingleLock lock(gHWLoaderSection);
+    printf("output image width is %d\n",          image_info->width);
+    printf("output image height is %d\n",         image_info->height);
+    printf("output image depth is %d\n",          image_info->depth);
+    printf("output image bytes_per_line is %d\n", image_info->bytes_per_line);
+    printf("output image nbytes   is %d\n",       image_info->nbytes);
 
-    aml_image_info_t *image_info;
-
-    amljpeg_init();
-    // mode 0 = keep ratio  
-    //      1 = crop image
-    //      2 = stretch image
-    int mode = 0;
-    // flag 0 = disable display 
-    //      1 = enable display with antiflicking disabled
-    //      2 = enable display with antiflicking enabled
-    int flag = 0;
-    image_info = read_jpeg_image((char*)CSpecialProtocol::TranslatePath(m_texturePath).c_str(),
-      m_width, m_height, mode, flag);
-    if (image_info)
+    if (format == XB_FMT_RGB8)
     {
-      printf("output image width is %d\n",          image_info->width);
-      printf("output image height is %d\n",         image_info->height);
-      printf("output image depth is %d\n",          image_info->depth);
-      printf("output image bytes_per_line is %d\n", image_info->bytes_per_line);
-      printf("output image nbytes   is %d\n",       image_info->nbytes);
-
       unsigned char *src = (unsigned char*)image_info->data;
       unsigned char *dst = (unsigned char*)pixels;
       for (unsigned int y = 0; y < m_height; y++)
@@ -289,25 +289,44 @@ bool CJpegIO::HWDecode(const unsigned char *pixels)
           src2++;
         }
         src += image_info->bytes_per_line;
-        dst += m_pitch;
+        dst += pitch;
       }
-      free(image_info->data);
-      free(image_info);
+    }
+    else if (format == XB_FMT_A8R8G8B8)
+    {
+      if (image_info->bytes_per_line == (int)pitch)
+      {
+        memcpy((void*)pixels, image_info->data, pitch * m_height);
+      }
+      else
+      {
+        unsigned char *src = (unsigned char*)image_info->data;
+        unsigned char *dst = (unsigned char*)pixels;
+        for (unsigned int y = 0; y < m_height; y++)
+        {
+          memcpy(dst, src, pitch);
+          src += image_info->bytes_per_line;
+          dst += pitch;
+        }
+      }
     }
     else
     {
-      rtn = false;
+      CLog::Log(LOGWARNING, "JpegIO: Incorrect output format specified");
     }
-    amljpeg_exit();     
+    free(image_info->data);
+    free(image_info);
   }
+  amljpeg_exit();
 #endif
   return(rtn);
 }
 
 bool CJpegIO::Decode(const unsigned char *pixels, unsigned int pitch, unsigned int format)
 {
-#if defined(TARGET_AMLOGIC)
-  if (HWDecode(pixels))
+#if 0
+//#if defined(TARGET_AMLOGIC)
+  if (HWDecode(pixels, pitch, format))
   {
     jpeg_destroy_decompress(&m_cinfo);
     return true;
@@ -333,12 +352,13 @@ bool CJpegIO::Decode(const unsigned char *pixels, unsigned int pitch, unsigned i
       while (m_cinfo.output_scanline < m_height)
       {
         jpeg_read_scanlines(&m_cinfo, &row, 1);
+        unsigned char *src2 = row;
         unsigned char *dst2 = dst;
-        for (unsigned int x = 0; x < m_width; x++)
+        for (unsigned int x = 0; x < m_width; x++, src2 += 3)
         {
-          *dst2++ = row[(x*3)+2];
-          *dst2++ = row[(x*3)+1];
-          *dst2++ = row[(x*3)+0];
+          *dst2++ = src2[2];
+          *dst2++ = src2[1];
+          *dst2++ = src2[0];
           *dst2++ = 0xff;
         }
         dst += pitch;

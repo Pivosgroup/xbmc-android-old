@@ -47,7 +47,7 @@ public:
 
 protected:
   bool           GetExif();
-  bool           HWDecode(const unsigned char *pixels);
+  bool           HWDecode(const unsigned char *pixels, unsigned int pitch, unsigned int format);
 
   unsigned char  *m_inputBuff;
   unsigned int   m_inputBuffSize;
