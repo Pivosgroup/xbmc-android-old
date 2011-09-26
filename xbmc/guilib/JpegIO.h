@@ -48,7 +48,9 @@ public:
 protected:
   bool           GetExif();
   bool           HWDecode(const unsigned char *pixels, unsigned int pitch, unsigned int format);
-
+  unsigned int   findExifMarker( unsigned char *jpegData, 
+                                 unsigned int dataSize, 
+                                 unsigned char *&exifPtr);
   unsigned char  *m_inputBuff;
   unsigned int   m_inputBuffSize;
   unsigned int   m_minx;
