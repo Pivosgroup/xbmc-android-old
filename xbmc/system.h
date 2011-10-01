@@ -71,6 +71,14 @@
   #define HAS_FILESYSTEM_AFP
 #endif
 
+#ifdef HAVE_LIBPLIST
+  #define HAS_AIRPLAY
+#endif
+
+#ifdef HAVE_LIBSHAIRPORT
+  #define HAS_AIRTUNES
+#endif
+
 /**********************
  * Non-free Components
  **********************/
@@ -120,7 +128,6 @@
   #endif
   #define HAS_ZEROCONF
   #define HAS_LINUX_NETWORK
-  #define HAS_AIRPLAY
 #endif
 
 /*****************
@@ -157,7 +164,6 @@
 #ifdef HAVE_LIBXRANDR
 #define HAS_XRANDR
 #endif
-#define HAS_AIRPLAY
 #endif
 
 /********************
