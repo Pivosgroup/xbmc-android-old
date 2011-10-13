@@ -1,0 +1,26 @@
+<window id="4">
+	<defaultcontrol>1000</defaultcontrol>
+	<controls>
+		<control type="label">
+			<posx>0</posx>
+			<posy>10</posy>
+			<width>1920</width>
+			<height>30</height>
+			<label>[B]SETTINGS[/B]</label>
+			<align>center</align>
+			<textcolor>white</textcolor>
+			<font>font30</font>
+		</control>
+		<control type="button" id="1000">
+			<posx>10</posx>
+			<posy>110</posy>
+			<width>300</width>
+			<height>30</height>
+			<label>Appearance</label>
+			<textcolor>lightblue</textcolor>
+			<focusedcolor>lightblue</focusedcolor>
+			<font>font30</font>
+			<onclick>ActivateWindow(AppearanceSettings)</onclick>
+		</control>
+	</controls>
+</window>

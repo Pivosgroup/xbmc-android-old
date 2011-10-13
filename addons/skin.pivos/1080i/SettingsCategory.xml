@@ -1,0 +1,75 @@
+<window id="12">
+	<defaultcontrol>3</defaultcontrol>
+	<controls>
+		<control type="label">
+			<posx>0</posx>
+			<posy>10</posy>
+			<width>1920</width>
+			<height>30</height>
+			<label>[B]SETTINGS - APPEARANCE[/B]</label>
+			<align>center</align>
+			<textcolor>white</textcolor>
+			<font>font30</font>
+		</control>
+		<control type="grouplist" id="3">
+			<posx>10</posx>
+			<posy>110</posy>
+			<width>250</width>
+			<height>450</height>
+			<onleft>5</onleft>
+			<onright>5</onright>
+			<onup>3</onup>
+			<ondown>3</ondown>
+		</control>
+		<control type="grouplist" id="5">
+			<posx>400</posx>
+			<posy>110</posy>
+			<width>880</width>
+			<height>455</height>
+			<onleft>3</onleft>
+			<onright>3</onright>
+			<onup>5</onup>
+			<ondown>5</ondown>
+		</control>
+		<control type="button" id="7">
+			<posx>0</posx>
+			<posy>0</posy>
+			<width>300</width>
+			<height>30</height>
+			<label>-</label>
+			<textcolor>white</textcolor>
+			<focusedcolor>lightblue</focusedcolor>
+			<font>font30</font>
+		</control>
+		<control type="radiobutton" id="8">
+			<posx>0</posx>
+			<posy>0</posy>
+			<width>300</width>
+			<height>30</height>
+			<label>-</label>
+			<textcolor>white</textcolor>
+			<focusedcolor>lightblue</focusedcolor>
+			<font>font30</font>
+		</control>
+		<control type="spincontrolex" id="9">
+			<posx>0</posx>
+			<posy>0</posy>
+			<width>300</width>
+			<height>30</height>
+			<label>-</label>
+			<textcolor>white</textcolor>
+			<focusedcolor>lightblue</focusedcolor>
+			<font>font30</font>
+		</control>
+		<control type="togglebutton" id="10">
+			<posx>0</posx>
+			<posy>0</posy>
+			<width>300</width>
+			<height>30</height>
+			<label>-</label>
+			<textcolor>white</textcolor>
+			<focusedcolor>lightblue</focusedcolor>
+			<font>font30</font>
+		</control>
+	</controls>
+</window>

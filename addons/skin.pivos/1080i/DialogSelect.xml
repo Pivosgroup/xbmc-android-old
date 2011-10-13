@@ -1,0 +1,39 @@
+<window type="dialog" id="2000">
+	<defaultcontrol always="true">3</defaultcontrol>
+	<controls>
+		<control type="list" id="3">
+			<posx>1400</posx>
+			<posy>110</posy>
+			<width>300</width>
+			<height>580</height>
+			<onup>3</onup>
+			<ondown>3</ondown>
+			<onleft>3</onleft>
+			<onright>3</onright>
+			<itemlayout width="300" height="30">
+				<control type="label">
+					<posx>0</posx>
+					<posy>0</posy>
+					<width>300</width>
+					<height>30</height>
+					<font>font30</font>
+					<textcolor>white</textcolor>
+					<selectedcolor>white</selectedcolor>
+					<label>$INFO[ListItem.Label]</label>
+				</control>
+			</itemlayout>
+			<focusedlayout width="300" height="30">
+				<control type="label">
+					<posx>0</posx>
+					<posy>0</posy>
+					<width>300</width>
+					<height>30</height>
+					<font>font30</font>
+					<textcolor>lightblue</textcolor>
+					<selectedcolor>lightblue</selectedcolor>
+					<label>$INFO[ListItem.Label]</label>
+				</control>
+			</focusedlayout>
+		</control>
+	</controls>
+</window>
