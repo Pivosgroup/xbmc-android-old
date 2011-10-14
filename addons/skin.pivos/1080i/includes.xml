@@ -1,2 +1,11 @@
 <includes>
+	<include name="DefaultBackground">
+		<control type="image">
+			<posx>0</posx>
+			<posy>0</posy>
+			<width>1920</width>
+			<height>1080</height>
+			<texture>special://skin/backgrounds/DefaultBackground.jpg</texture>
+		</control>
+	</include>
 </includes>

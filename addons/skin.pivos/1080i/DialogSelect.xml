@@ -29,8 +29,8 @@
 					<width>300</width>
 					<height>30</height>
 					<font>font30</font>
-					<textcolor>lightblue</textcolor>
-					<selectedcolor>lightblue</selectedcolor>
+					<textcolor>lightorange</textcolor>
+					<selectedcolor>lightorange</selectedcolor>
 					<label>$INFO[ListItem.Label]</label>
 				</control>
 			</focusedlayout>

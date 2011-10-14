@@ -1,6 +1,7 @@
 <window id="12">
 	<defaultcontrol>3</defaultcontrol>
 	<controls>
+		<include>DefaultBackground</include>
 		<control type="label">
 			<posx>0</posx>
 			<posy>10</posy>
@@ -38,7 +39,7 @@
 			<height>30</height>
 			<label>-</label>
 			<textcolor>white</textcolor>
-			<focusedcolor>lightblue</focusedcolor>
+			<focusedcolor>lightorange</focusedcolor>
 			<font>font30</font>
 		</control>
 		<control type="radiobutton" id="8">
@@ -48,7 +49,7 @@
 			<height>30</height>
 			<label>-</label>
 			<textcolor>white</textcolor>
-			<focusedcolor>lightblue</focusedcolor>
+			<focusedcolor>lightorange</focusedcolor>
 			<font>font30</font>
 		</control>
 		<control type="spincontrolex" id="9">
@@ -58,7 +59,7 @@
 			<height>30</height>
 			<label>-</label>
 			<textcolor>white</textcolor>
-			<focusedcolor>lightblue</focusedcolor>
+			<focusedcolor>lightorange</focusedcolor>
 			<font>font30</font>
 		</control>
 		<control type="togglebutton" id="10">
@@ -68,7 +69,7 @@
 			<height>30</height>
 			<label>-</label>
 			<textcolor>white</textcolor>
-			<focusedcolor>lightblue</focusedcolor>
+			<focusedcolor>lightorange</focusedcolor>
 			<font>font30</font>
 		</control>
 	</controls>

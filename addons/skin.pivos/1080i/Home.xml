@@ -1,26 +1,96 @@
 <window id="0">
 	<defaultcontrol always="true">1000</defaultcontrol>
 	<controls>
-		<control type="label">
+		<include>DefaultBackground</include>
+		<control type="list" id="1000">
+			<orientation>vertical</orientation>
+			<posx>40</posx>
+			<posy>320</posy>
+			<width>400</width>
+			<height>680</height>
+			<onup>1000</onup>
+			<ondown>1000</ondown>
+			<onleft>1000</onleft>
+			<onright>1000</onright>
+			<itemlayout width="400" height="80">
+				<control type="label">
+					<posx>200</posx>
+					<posy>2</posy>
+					<width>400</width>
+					<height>40</height>
+					<label>[UPPERCASE][B]$INFO[ListItem.Label][/B][/UPPERCASE]</label>
+					<font>font50</font>
+					<align>center</align>
+					<textcolor>white</textcolor>
+					<shadowcolor>FF000000</shadowcolor>
+				</control>
+			</itemlayout>
+			<focusedlayout width="400" height="80">
+				<control type="image">
+					<posx>0</posx>
+					<posy>0</posy>
+					<width>400</width>
+					<height>80</height>
+					<texture border="20">Button.png</texture>
+					<animation effect="slide" start="0,-80" end="0,0" time="150" reversible="false" tween="quadratic" easing="out" condition="Container(1000).OnNext">focus</animation>
+					<animation effect="slide" start="0,80" end="0,0" time="150" reversible="false" tween="quadratic" easing="out" condition="Container(1000).OnPrevious">focus</animation>
+					<animation effect="fade" start="50" end="80" time="1500" pulse="true" condition="true">Conditional</animation>
+				</control>
+				<control type="label">
+					<posx>200</posx>
+					<posy>2</posy>
+					<width>400</width>
+					<height>40</height>
+					<label>[UPPERCASE][B]$INFO[ListItem.Label][/B][/UPPERCASE]</label>
+					<font>font50</font>
+					<align>center</align>
+					<textcolor>white</textcolor>
+					<shadowcolor>FF000000</shadowcolor>
+				</control>
+				<control type="label">
+					<posx>200</posx>
+					<posy>2</posy>
+					<width>400</width>
+					<height>40</height>
+					<label>[UPPERCASE][B]$INFO[ListItem.Label][/B][/UPPERCASE]</label>
+					<font>font50</font>
+					<align>center</align>
+					<textcolor>orange</textcolor>
+					<animation effect="fade" start="0" end="100" time="150" pulse="true" condition="true">focus</animation>
+				</control>
+			</focusedlayout>
+			<content>
+				<item id="1">
+					<label>Play</label>
+					<onclick>ActivateWindow()</onclick>
+				</item>
+				<item id="2">
+					<label>Apps</label>
+					<onclick>ActivateWindow()</onclick>
+				</item>
+				<item id="3">
+					<label>Favourites</label>
+					<onclick>ActivateWindow()</onclick>
+				</item>
+				<item id="4">
+					<label>Weather</label>
+					<onclick>ActivateWindow()</onclick>
+				</item>
+				<item id="5">
+					<label>Settings</label>
+					<onclick>ActivateWindow(Settings)</onclick>
+				</item>
+			</content>
+		</control>
+		<control type="fadelabel">
 			<posx>0</posx>
-			<posy>10</posy>
+			<posy>1030</posy>
 			<width>1920</width>
 			<height>30</height>
-			<label>[B]HOME[/B]</label>
-			<align>center</align>
-			<textcolor>white</textcolor>
+			<label>[B]8:00pm:  amet's magic camel show[/B]</label>
+			<textcolor>55ffffff</textcolor>
 			<font>font30</font>
-		</control>
-		<control type="button" id="1000">
-			<posx>10</posx>
-			<posy>110</posy>
-			<width>300</width>
-			<height>30</height>
-			<label>Settings</label>
-			<textcolor>lightblue</textcolor>
-			<focusedcolor>lightblue</focusedcolor>
-			<font>font30</font>
-			<onclick>ActivateWindow(Settings)</onclick>
+			<textoffsetx>1920</textoffsetx>
 		</control>
 	</controls>
 </window>
