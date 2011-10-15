@@ -9,7 +9,7 @@
 		</control>
 		<control type="image">
 			<posx>1500</posx>
-			<posy>805</posy>
+			<posy>775</posy>
 			<width>371</width>
 			<height>220</height>
 			<texture>logo.png</texture>

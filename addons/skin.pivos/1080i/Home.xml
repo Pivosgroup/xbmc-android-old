@@ -82,15 +82,17 @@
 				</item>
 			</content>
 		</control>
-		<control type="fadelabel">
-			<posx>0</posx>
-			<posy>1030</posy>
-			<width>1920</width>
-			<height>30</height>
-			<label>[B]8:00pm:  amet's magic camel show[/B]</label>
-			<textcolor>55ffffff</textcolor>
+		<control type="rss">
+		  <posx>0</posx>
+		  <posy>1010</posy>
+		  <width>1920</width>
+		  <height>30</height>
 			<font>font30</font>
-			<textoffsetx>1920</textoffsetx>
-		</control>
+			<urlset>1</urlset>
+			<visible>system.getbool(lookandfeel.enablerssfeeds)</visible>
+			<textcolor>orange</textcolor>
+			<titlecolor>darkorange</titlecolor>
+			<headlinecolor>white</headlinecolor>
+		</control>		
 	</controls>
 </window>
