@@ -10,8 +10,8 @@
 			<height>680</height>
 			<onup>1000</onup>
 			<ondown>1000</ondown>
-			<onleft>1000</onleft>
-			<onright>1000</onright>
+			<onleft>20</onleft>
+			<onright>20</onright>
 			<itemlayout width="400" height="80">
 				<control type="label">
 					<posx>200</posx>
@@ -82,6 +82,35 @@
 				</item>
 			</content>
 		</control>
+		<control type="label">
+			<description>time label</description>
+			<posx>1780</posx>
+			<posy>10</posy>
+			<width>600</width>
+			<height>50</height>
+			<align>right</align>
+			<aligny>center</aligny>
+			<font>font40</font>
+			<textcolor>orange</textcolor>
+			<shadowcolor>black</shadowcolor>
+			<label>[UPPERCASE]$INFO[System.Date][/UPPERCASE] | $INFO[System.Time]</label>
+		</control>
+		<control type="button" id="20">
+			<posx>1825</posx>
+			<posy>15</posy>
+			<width>43</width>
+			<height>43</height>
+			<label>31003</label>
+			<font>-</font>
+			<aligny>-</aligny>
+			<onclick>ActivateWindow(ShutdownMenu)</onclick>
+			<texturefocus>home-power-focus.png</texturefocus>
+			<texturenofocus>home-power.png</texturenofocus>
+			<onleft>1000</onleft>
+			<onright>1000</onright>
+			<onup>1000</onup>
+			<ondown>1000</ondown>
+		</control>		
 		<control type="rss">
 		  <posx>0</posx>
 		  <posy>1010</posy>
@@ -91,8 +120,8 @@
 			<urlset>1</urlset>
 			<visible>system.getbool(lookandfeel.enablerssfeeds)</visible>
 			<textcolor>orange</textcolor>
-			<titlecolor>darkorange</titlecolor>
+			<titlecolor>orange</titlecolor>
 			<headlinecolor>white</headlinecolor>
-		</control>		
+		</control>			
 	</controls>
 </window>
