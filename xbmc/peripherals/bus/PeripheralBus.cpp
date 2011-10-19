@@ -93,7 +93,6 @@ CPeripheralBus::CPeripheralBus(CPeripherals *manager, PeripheralBusType type) :
     CThread("XBMC Peripherals"),
     m_iRescanTime(PERIPHERAL_DEFAULT_RESCAN_INTERVAL),
     m_bInitialised(false),
-    m_bIsStarted(false),
     m_bNeedsPolling(true),
     m_manager(manager),
     m_type(type),
@@ -133,6 +132,7 @@ void CPeripheralBus::Clear(void)
 
 void CPeripheralBus::UnregisterRemovedDevices(const PeripheralScanResults &results)
 {
+  CLog::Log(LOGDEBUG, "%s - UnregisterRemovedDevices", __FUNCTION__);
   CSingleLock lock(m_critSection);
   for (int iDevicePtr = (int) m_peripherals.size() - 1; iDevicePtr >= 0; iDevicePtr--)
   {
@@ -155,6 +155,7 @@ void CPeripheralBus::UnregisterRemovedDevices(const PeripheralScanResults &resul
 
 void CPeripheralBus::RegisterNewDevices(const PeripheralScanResults &results)
 {
+  CLog::Log(LOGDEBUG, "%s - RegisterNewDevices", __FUNCTION__);
   CSingleLock lock(m_critSection);
   for (unsigned int iResultPtr = 0; iResultPtr < results.m_results.size(); iResultPtr++)
   {
@@ -240,34 +241,28 @@ void CPeripheralBus::Process(void)
   {
     m_triggerEvent.Reset();
 
-    if (!ScanForDevices())
-      break;
+    ScanForDevices();
 
     if (!m_bStop)
       m_triggerEvent.WaitMSec(m_iRescanTime);
   }
-
-  m_bIsStarted = false;
 }
 
 bool CPeripheralBus::Initialise(void)
 {
   CSingleLock lock(m_critSection);
-  if (!m_bIsStarted)
-  {
-    /* do an initial scan of the bus */
-    m_bIsStarted = ScanForDevices();
+  /* do an initial scan of the bus */
+  ScanForDevices();
 
-    if (m_bIsStarted && m_bNeedsPolling)
-    {
-      lock.Leave();
-      m_triggerEvent.Reset();
-      Create();
-      SetPriority(-1);
-    }
+  if (m_bNeedsPolling)
+  {
+    lock.Leave();
+    m_triggerEvent.Reset();
+    Create();
+    SetPriority(-1);
   }
 
-  return m_bIsStarted;
+  return true;
 }
 
 void CPeripheralBus::Register(CPeripheral *peripheral)

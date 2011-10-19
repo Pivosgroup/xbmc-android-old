@@ -21,8 +21,12 @@
 
 #include "PeripheralBusUSBLibUSB.h"
 #include "peripherals/Peripherals.h"
-#include <usb.h>
 #include "utils/log.h"
+#if defined(HAS_LINUX_EVENTS)
+#include "windowing/WinEventsLinux.h"
+#endif
+
+#include <usb.h>
 
 using namespace PERIPHERALS;
 
@@ -37,6 +41,7 @@ CPeripheralBusUSB::CPeripheralBusUSB(CPeripherals *manager) :
 
 bool CPeripheralBusUSB::PerformDeviceScan(PeripheralScanResults &results)
 {
+  bool rtn = false;
   struct usb_bus *bus;
   usb_find_devices();
   for (bus = m_busses; bus; bus = bus->next)
@@ -58,7 +63,32 @@ bool CPeripheralBusUSB::PerformDeviceScan(PeripheralScanResults &results)
     }
   }
 
-  return true;
+  // quick check if number of entries changed.
+  if (m_results.m_results.size() != results.m_results.size())
+  {
+    m_results = results;
+    rtn = true;
+  }
+  else
+  {
+    // number of entried are the same, so we have to compare each one.
+    for (unsigned int iDevicePtr = 0; iDevicePtr < m_results.m_results.size(); iDevicePtr++)
+    {
+      if (!results.ContainsResult(m_results.m_results.at(iDevicePtr)))
+      {
+        // if anything changes, we flag a new PeripheralScanResults
+        m_results = results;
+        rtn = true;
+        break;
+      }
+    }
+  }
+#if defined(HAS_LINUX_EVENTS)
+  if (rtn)
+    CWinEvents::RefreshDevices();
+#endif
+
+  return rtn;
 }
 
 const PeripheralType CPeripheralBusUSB::GetType(int iDeviceClass)

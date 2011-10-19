@@ -41,6 +41,7 @@ namespace PERIPHERALS
 
   protected:
     static const PeripheralType GetType(int iDeviceClass);
+    PeripheralScanResults m_results;
     struct usb_bus *m_busses;
   };
 }
