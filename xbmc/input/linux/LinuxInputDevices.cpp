@@ -734,7 +734,8 @@ XBMC_Event CLinuxInputDevice::ReadEvent()
     if (readlen <= 0)
       break;
 
-    //printf("read event readlen = %d device name %s m_fileName %s\n", readlen, m_deviceName, m_fileName.c_str());
+    //printf("read event readlen = %d device name %s m_fileName %s levt.type %d levt.value %d levt.code %d\n", 
+    //  readlen, m_deviceName, m_fileName.c_str(), levt.type, levt.value, levt.code);
 
     if (!TranslateEvent(levt, devt))
       continue;
