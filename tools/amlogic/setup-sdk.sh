@@ -3,7 +3,7 @@
 SCRIPT_PATH=$(cd `dirname $0` && pwd)
 
 #Edit these two
-BUILDROOT=/home/davilla/amlogic/buildroot-2010.05
+BUILDROOT=/home/davilla/pivosgroup/linux-buildroot/buildroot-2010.05
 TARBALLS=/opt/xbmc-tarballs
 
 XBMCPREFIX=/opt/xbmc-aml
