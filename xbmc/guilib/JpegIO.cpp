@@ -32,7 +32,8 @@
 
 #include <setjmp.h>
 
-#if defined(TARGET_AMLOGIC)
+#if 0
+//#if defined(TARGET_AMLOGIC)
 #include "filesystem/SpecialProtocol.h"
 #include <amljpeg.h>
 // we need this to serialize access to hw image decoder.
@@ -234,7 +235,8 @@ bool CJpegIO::Open(const CStdString &texturePath, unsigned int minx, unsigned in
 bool CJpegIO::HWDecode(const unsigned char *pixels, unsigned int pitch, unsigned int format)
 {
   bool rtn = false;
-#if defined(TARGET_AMLOGIC)
+#if 0
+//#if defined(TARGET_AMLOGIC)
   CSingleLock lock(gHWLoaderSection);
 
   aml_image_info_t *image_info;
