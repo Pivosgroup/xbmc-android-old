@@ -1,0 +1,69 @@
+Change setup-sdk.sh to reflect your paths for BUILDROOT and TARBALLS;
+ cd tools/amlogic
+ nano setup-sdk.sh 
+ ./setup-sdk.sh
+ cd ../../
+ 
+Build xbmc depend libs
+ make -C tools/amlogic/depends
+
+
+Build XBMC
+ make
+
+
+Install XBMC (goes into /opt/xbmc-aml)
+ sudo make install
+ 
+Run XBMC on amlogic box
+ insmod /lib/modules/mali.ko
+ echo 1 > /sys/class/graphics/fb1/blank
+ fbset -g 1280 720 1280 1440 32
+ echo "nameserver 8.8.8.8" > /etc/resolv.conf
+ mount -t nfs -o nolock,rw 192.168.2.200:/opt/xbmc-aml /opt/xbmc-aml
+ mount -t usbfs none /proc/bus/usb
+ export XBMC_HOME=/opt/xbmc-aml/share/xbmc
+ export PATH=$PATH:/opt/xbmc-aml/bin
+ export LD_LIBRARY_PATH=/opt/xbmc-aml/lib:/usr/local/lib:/usr/lib:/lib
+ ln -sf /opt/xbmc-aml/lib/mysql/libmysqlclient.so.16 /opt/xbmc-aml/lib/libmysqlclient.so.16
+ amremote_config /etc/irmap-amlogic
+
+ /opt/xbmc-aml/lib/xbmc/xbmc.bin
+
+
+cat /.xbmc/temp/xbmc.log
+
+
+
+Run a swapfile on SDCard:
+mkdir -p /home/amlogic/tmp
+mount /dev/sda1 /home/amlogic/tmp
+dd if=/dev/zero of=/home/amlogic/tmp/swapfile1 bs=1024 count=524288
+mkswap /home/amlogic/tmp/swapfile1
+swapon /home/amlogic/tmp/swapfile1
+free
+
+
+How to boot kernel/rootfs from SDCard:
+http://openlinux.amlogic.com/wiki/index.php/Arm/Platform_Info/Information_for_8726M/Burn_system_for_8726M_Howto
+
+mkdir fat32
+sudo mount /dev/sdb1 fat32
+cp /var/lib/tftpboot/uImage fat32/
+sudo umount fat32
+rmdir fat32
+
+mkdir ext2
+sudo mkfs.ext2 /dev/sdb2
+sudo mount /dev/sdb2 ext2
+sudo rsync -a --exclude .xbmc /opt/aml-rootfs/ ext2
+sudo rsync -a --exclude-from=tools/amlogic/packaging/excludes.txt /opt/xbmc-aml/ ext2/opt/xbmc-aml
+sudo cp -f tools/amlogic/packaging/etc/init.d/S100xbmc ext2/etc/init.d/S100xbmc
+sudo cp -f tools/amlogic/packaging/etc/network/interfaces ext2/etc/network/interfaces
+sudo umount ext2
+rmdir ext2
+
+setenv bootcmd 'mmc init;mmcinfo;fatload mmc 0:1 82000000 uImage;bootm 82000000;'
+setenv bootargs 'console=tty0 console=ttyS0,115200n8 root=/dev/cardblksd2 rw rootfstype=ext2 init=/init rootwait'
+saveenv
+boot
