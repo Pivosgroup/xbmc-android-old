@@ -29,7 +29,7 @@ $(SOURCE): $(TARBALLS_LOCATION)/$(ARCHIVE)
 	rm -rf $(SOURCE)
 	$(ARCHIVE_TOOL) $(ARCHIVE_TOOL_FLAGS) $(TARBALLS_LOCATION)/$(ARCHIVE)
 	echo $(SOURCE) > .gitignore
-	cd $(SOURCE); $(CONFIGURE)
+	cd $(SOURCE); patch -p1 <../Makefile.patch; $(CONFIGURE)
 
 $(LIBDYLIB): $(SOURCE)
 	make -j $(JOBS) -C $(SOURCE)
