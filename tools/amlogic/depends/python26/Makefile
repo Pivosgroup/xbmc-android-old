@@ -44,11 +44,12 @@ $(LIBDYLIB): $(TARBALLS_LOCATION)/$(ARCHIVE)
 	cd $(SOURCE); make distclean
 	cd $(SOURCE); patch -p1 < ../Python-2.6.5-xcompile.patch
 	cd $(SOURCE); $(CONFIGURE)
-	cd $(SOURCE); make -j $(JOBS) HOSTPYTHON=./hostpython HOSTPGEN=./Parser/hostpgen BLDSHARED="i686-cm-linux-gcc -shared" CROSS_COMPILE="i686-cm-linux-" CROSS_COMPILE_TARGET=yes PYTHON_DISABLE_MODULES=$(DISABLE_MODS)
-	cd $(SOURCE); make -j $(JOBS) HOSTPYTHON=./hostpython HOSTPGEN=./Parser/hostpgen BLDSHARED="i686-cm-linux-gcc -shared" CROSS_COMPILE="i686-cm-linux-" CROSS_COMPILE_TARGET=yes PYTHON_DISABLE_MODULES=$(DISABLE_MODS) libpython2.6.so
+	cd $(SOURCE); make -j $(JOBS) HOSTPYTHON=./hostpython HOSTPGEN=./Parser/hostpgen CROSS_COMPILE_TARGET=yes PYTHON_DISABLE_MODULES=$(DISABLE_MODS)
 
 .installed:
-	cd $(SOURCE); make install HOSTPYTHON=./hostpython BLDSHARED="i686-cm-linux-gcc -shared" CROSS_COMPILE="i686-cm-linux-" CROSS_COMPILE_TARGET=yes prefix=$(PREFIX)
+	cd $(SOURCE); make install HOSTPYTHON=./hostpython CROSS_COMPILE_TARGET=yes
+	find $(PREFIX)/lib/python2.6 -type f -name *.pyc -exec rm -f {} \;
+	find $(PREFIX)/lib/python2.6 -type f -name *.pyo -exec rm -f {} \;
 	cp $(SOURCE)/libpython2.6.so $(PREFIX)/lib
 	chmod 755 $(PREFIX)/lib/libpython2.6.so
 	touch $@
