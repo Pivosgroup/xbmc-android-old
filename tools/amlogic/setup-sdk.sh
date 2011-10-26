@@ -9,7 +9,7 @@ TARBALLS=/opt/xbmc-tarballs
 XBMCPREFIX=/opt/xbmc-aml
 SDKSTAGE=$BUILDROOT/output/staging
 TARGETFS=$BUILDROOT/output/target
-TOOLCHAIN=/opt/arm-2010q1
+TOOLCHAIN=$BUILDROOT/output/external-toolchain
 #
 sudo mkdir -p $XBMCPREFIX
 sudo chmod 777 $XBMCPREFIX
