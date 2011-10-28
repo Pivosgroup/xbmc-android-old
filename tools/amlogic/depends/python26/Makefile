@@ -45,6 +45,7 @@ $(LIBDYLIB): $(TARBALLS_LOCATION)/$(ARCHIVE)
 	cd $(SOURCE); mv Parser/pgen Parser/hostpgen
 	cd $(SOURCE); make distclean
 	cd $(SOURCE); patch -p1 < ../Python-2.6.5-xcompile.patch
+	cd $(SOURCE); patch -p1 < ../Python-2.6.5-xcompile_1.patch
 	cd $(SOURCE); $(CONFIGURE)
 	cd $(SOURCE); make -j $(JOBS) HOSTPYTHON=./hostpython HOSTPGEN=./Parser/hostpgen CROSS_COMPILE_TARGET=yes PYTHON_DISABLE_MODULES=$(DISABLE_MODS)
 

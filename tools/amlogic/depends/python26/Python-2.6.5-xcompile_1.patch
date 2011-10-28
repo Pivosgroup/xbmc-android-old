@@ -1,0 +1,7 @@
+--- a/Lib/plat-generic/regen	2011-10-28 21:29:56.621165359 +0200
++++ b/Lib/plat-generic/regen	2011-10-28 21:30:09.067831616 +0200
+@@ -1,3 +1,3 @@
+ #! /bin/sh
+ set -v
+-python$EXE ../../Tools/scripts/h2py.py -i '(u_long)' /usr/include/netinet/in.h
++hostpython ../../Tools/scripts/h2py.py -i '(u_long)' /usr/include/netinet/in.h
