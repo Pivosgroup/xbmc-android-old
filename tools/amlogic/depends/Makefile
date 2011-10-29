@@ -1,16 +1,10 @@
 include ../Makefile.include
 
-BUILDTOOLS = help2man autoconf automake libtool pkg-config yasm cmake patchelf
+BUILDTOOLS = yasm
 
 SUBDIRS = \
-	pcre expat gettext readline sqlite3 libgpg-error libgcrypt \
-	bzip2 liblzo2 libxml2 freetype2 fontconfig \
-	openssl libssh2 curl \
-	libpng libjpeg-turbo tiff jasper \
-	libogg libvorbis libflac libmad fribidi libwavpack libmpeg2 \
-	libass libcdio libsamplerate \
-	libmicrohttpd libmodplug librtmp libbluray libusb yajl \
-	samba dbus python26 mysqlclient boost xbmc \
+	libjpeg-turbo tiff jasper fribidi libass libmodplug \
+	libcdio librtmp libbluray yajl boost xbmc \
 
 IMAGENAME = xbmc-aml-`date +'%y%m%d'`
 
