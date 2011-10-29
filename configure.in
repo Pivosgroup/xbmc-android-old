@@ -502,11 +502,6 @@ case $host in
      AC_SUBST(ARCH_DEFINES, "-DTARGET_POSIX -DTARGET_LINUX -DTARGET_AMLOGIC -D_LINUX -D_ARMEL")
      ARCH="arm"
      use_arch="arm"
-     PYTHON_VERSION="2.6"
-     PYTHON_LDFLAGS="-L${prefix}/lib -lpython2.6"
-     PYTHON_CPPFLAGS="-I${prefix}/include/python2.6"
-     PYTHON_SITE_PKG="${prefix}/lib/python2.6/site-packages"
-     PYTHON_NOVERSIONCHECK="no-check"
      AC_DEFINE(HAS_EGLGLES, [1], [Define if supporting EGL based GLES Framebuffer])
      CFLAGS="$CFLAGS -Wno-psabi -Wa,-mno-warn-deprecated"
      CXXFLAGS="$CXXFLAGS -Wno-psabi -Wa,-mno-warn-deprecated"
@@ -839,7 +834,6 @@ XB_FIND_SONAME([MPEG2],       [mpeg2])
 # WebServer
 if test "$use_webserver" = "yes"; then
 if test "$target_platform" = "target_amlogic"; then
-  AC_CHECK_LIB([intl],        [main],, AC_MSG_ERROR($missing_library))
   AC_CHECK_LIB([gpg-error],   [main],, AC_MSG_ERROR($missing_library))
   AC_CHECK_LIB([gcrypt],      [main],, AC_MSG_ERROR($missing_library))
 fi
