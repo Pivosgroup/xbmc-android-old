@@ -4,8 +4,14 @@ include ../depends.mk
 SOURCE=../../../../
 # configuration settings
 export SDKSTAGE
-export ALSA_CFLAGS=-I$(SDKSTAGE)/usr/include/alsa
-export PKG_CONFIG_PATH=$(PREFIX)/bin/pkg-config
+
+export PYTHON_VERSION=2.7
+export PYTHON_LDFLAGS=-L$(SDKSTAGE)/usr/lib -lpython$(PYTHON_VERSION) -lpthread -ldl -lutil -lm
+export PYTHON_CPPFLAGS=-I$(SDKSTAGE)/usr/include/python$(PYTHON_VERSION)
+export PYTHON_SITE_PKG=$(SDKSTAGE)/usr/lib/python$(PYTHON_VERSION)/site-packages
+export PYTHON_NOVERSIONCHECK=no-check
+
+export PATH:=$(SYSROOT)/usr/bin:$(PATH)
 CONFIGURE=./configure --prefix=$(PREFIX) --host=$(HOST) \
   --enable-external-python --enable-gles --disable-sdl --disable-x11 --disable-xrandr \
   --disable-optical-drive --disable-dvdcss --disable-texturepacker
