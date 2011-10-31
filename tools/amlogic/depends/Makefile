@@ -1,6 +1,6 @@
 include ../Makefile.include
 
-BUILDTOOLS = yasm
+BUILDTOOLS =
 
 SUBDIRS = \
 	libjpeg-turbo tiff jasper fribidi libass libmodplug \
