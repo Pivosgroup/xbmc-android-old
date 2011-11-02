@@ -228,7 +228,9 @@ static void signal_handler(int iSignal)
 
 uint64_t CurrentHostCounter(void)
 {
-  return( (uint64_t)0);
+  struct timespec now;
+  clock_gettime(CLOCK_MONOTONIC, &now);
+  return( ((int64_t)now.tv_sec * 1000000000L) + now.tv_nsec );
 }
 
 uint64_t CurrentHostFrequency(void)
@@ -280,7 +282,7 @@ static void player_para_init(AppContext *para)
 }
 
 /*************************************************************************/
-void av_packet_init(am_packet_t *pkt)
+void am_packet_init(am_packet_t *pkt)
 {
   pkt->avpkt  = NULL;
   pkt->avpkt_isvalid = 0;
@@ -791,11 +793,15 @@ int main(int argc, char * const argv[])
   signal(SIGTERM, signal_handler);
 
   // initialize App contex.
+  AVPacket avpkt;
   AppContext ctx;
   memset(&ctx, 0, sizeof(ctx));
 
   player_para_init(&ctx);
-  av_packet_init(&ctx.am_pkt);
+  am_packet_init(&ctx.am_pkt);
+
+  ctx.am_pkt.avpkt = &avpkt;
+  av_init_packet(ctx.am_pkt.avpkt);
 
   // create the ffmepg file reader/demuxer
   ctx.demuxer = new FFmpegFileReader(input_filename.c_str());
@@ -827,9 +833,10 @@ int main(int argc, char * const argv[])
   //ctx.vstream_info.video_rate   = UNIT_FREQ * ctx.codec_context->r_frame_rate.den / ctx.codec_context->r_frame_rate.num;
 
   printf("\n*********AMLOGIC CODEC PLAYER DEMO************\n\n");
-	//osd_blank("/sys/class/graphics/fb0/blank", 1);
-	//osd_blank("/sys/class/graphics/fb1/blank", 1);
+	osd_blank("/sys/class/graphics/fb0/blank", 1);
+	osd_blank("/sys/class/graphics/fb1/blank", 1);
 	//osd_blank("/sys/class/tsync/enable", 1);
+  osd_blank("/sys/class/tsync/enable", 0);
 
   ctx.vcodec.has_video = 1;
   //ctx.vcodec.video_pid = 0x1022;
@@ -843,6 +850,7 @@ int main(int argc, char * const argv[])
       #define EXTERNAL_PTS (1)
       #define SYNC_OUTSIDE (2)
       ctx.vcodec.am_sysinfo.param = (void*)(EXTERNAL_PTS | SYNC_OUTSIDE);
+      //ctx.vcodec.am_sysinfo.param = (void*)(EXTERNAL_PTS);
       ctx.vcodec.stream_type = STREAM_TYPE_ES_VIDEO;
       ctx.vcodec.am_sysinfo.format = VIDEO_DEC_FORMAT_H264;
       ctx.vcodec.am_sysinfo.rate   = 25;
@@ -883,14 +891,14 @@ int main(int argc, char * const argv[])
 		printf("codec_init_cntl error\n");
 		return -1;
 	}
-	//codec_set_cntl_avthresh(&ctx.vcodec, AV_SYNC_THRESH);
-	//codec_set_cntl_syncthresh(&ctx.vcodec, ctx.vcodec.has_audio);
+
+	codec_set_cntl_avthresh(&ctx.vcodec, AV_SYNC_THRESH);
+	codec_set_cntl_syncthresh(&ctx.vcodec, ctx.vcodec.has_audio);
 
 
   {
     int frame_count, total = 0;
-    int64_t bgn, end;
-    int64_t dts, pts;
+    int64_t bgn_us, end_us;
 
     ctx.am_pkt.codec = &ctx.vcodec;
     if (ctx.codec_context->extradata_size) {
@@ -900,33 +908,36 @@ int main(int argc, char * const argv[])
       }
     }
 
-    ctx.demuxer->Read(&ctx.am_pkt.data, &ctx.am_pkt.data_size, &dts, &pts);
-    printf("byte_count(%d), dts(%llu), pts(%llu)\n", ctx.am_pkt.data_size, dts, pts);
-    if (!ctx.am_pkt.data_size) {
+    ctx.demuxer->Read(ctx.am_pkt.avpkt);
+    printf("byte_count(%d), dts(%llu), pts(%llu)\n",
+      ctx.am_pkt.avpkt->size, ctx.am_pkt.avpkt->dts, ctx.am_pkt.avpkt->pts);
+    if (!ctx.am_pkt.avpkt->size) {
       fprintf(stderr, "ERROR: Zero bytes read from input\n");
       //goto fail;
     }
+    ctx.am_pkt.data = ctx.am_pkt.avpkt->data;
+    ctx.am_pkt.data_size = ctx.am_pkt.avpkt->size;
     ctx.am_pkt.avpkt_newflag = 1;
     ctx.am_pkt.avpkt_isvalid = 1;
 
-    usleep(10000);
     frame_count = 0;
     bool done = false;
     while (!g_signal_abort && !done && (frame_count < 5000)) {
       h264_update_frame_header(&ctx.am_pkt);
       
-      bgn = CurrentHostCounter() * 1000 / CurrentHostFrequency();
+      bgn_us = CurrentHostCounter() * 1000 / CurrentHostFrequency();
 
       ret = write_av_packet(&ctx, &ctx.am_pkt);
-      delete ctx.am_pkt.data;
 
-      end = CurrentHostCounter() * 1000 / CurrentHostFrequency();
+      end_us = CurrentHostCounter() * 1000 / CurrentHostFrequency();
 
-      fprintf(stdout, "decode time(%llu)\n", end-bgn);
+      fprintf(stdout, "decode time(%llu) us\n", end_us-bgn_us);
       frame_count++;
       //usleep(10000);
 
-      ctx.demuxer->Read(&ctx.am_pkt.data, &ctx.am_pkt.data_size, &dts, &pts);
+      ctx.demuxer->Read(ctx.am_pkt.avpkt);
+      ctx.am_pkt.data = ctx.am_pkt.avpkt->data;
+      ctx.am_pkt.data_size = ctx.am_pkt.avpkt->size;
       ctx.am_pkt.avpkt_newflag = 1;
       ctx.am_pkt.avpkt_isvalid = 1;
 
@@ -936,7 +947,7 @@ int main(int argc, char * const argv[])
   }
 
 fail:
-	codec_close(&ctx.acodec);
+	codec_close_cntl(&ctx.vcodec);
 	codec_close(&ctx.vcodec);
 
   return 0;

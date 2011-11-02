@@ -8,6 +8,7 @@
 #include <string>
 #include <stdint.h>
 
+typedef struct AVPacket AVPacket;
 struct AVCodecContext;
 struct AVFormatContext;
 
@@ -18,6 +19,7 @@ class FFmpegFileReader {
   explicit FFmpegFileReader(const std::string& filename);
   virtual ~FFmpegFileReader();
   virtual bool Initialize();
+  virtual bool Read(AVPacket *avpkt);
   virtual bool Read(uint8_t** output, int* size, int64_t *dts, int64_t *pts);
   uint64_t ConvertTimestamp(uint64_t pts, int den, int num);
 

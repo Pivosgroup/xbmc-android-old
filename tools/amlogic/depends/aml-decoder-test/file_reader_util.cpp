@@ -94,6 +94,35 @@ bool FFmpegFileReader::Initialize() {
   return true;
 }
 
+bool FFmpegFileReader::Read(AVPacket *avpkt) {
+  if (!m_format_context || !m_codec_context || m_target_stream == -1) {
+    return false;
+  }
+
+  bool eof, found = false;
+  while (!found) {
+    int result = av_read_frame(m_format_context, avpkt);
+    if (result < 0) {
+      return false;
+    }
+    if (avpkt->stream_index == m_target_stream) {
+      if (m_converter) {
+        if (!m_converter->ConvertPacket(avpkt)) {
+          printf("failed to convert AVPacket\n");
+        }
+      }
+      if(m_format_context->pb)
+        eof = m_format_context->pb->eof_reached;
+      if(avpkt->size == 0)
+        eof = true;
+
+      found = true;
+    }
+  }
+
+  return eof;
+}
+
 bool FFmpegFileReader::Read(uint8_t** output, int* size, int64_t *dts, int64_t *pts) {
   if (!m_format_context || !m_codec_context || m_target_stream == -1) {
     *size = 0;
