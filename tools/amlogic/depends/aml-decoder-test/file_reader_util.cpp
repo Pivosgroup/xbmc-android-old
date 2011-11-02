@@ -94,7 +94,7 @@ bool FFmpegFileReader::Initialize() {
   return true;
 }
 
-bool FFmpegFileReader::Read(uint8_t** output, int* size, uint64_t *dts, uint64_t *pts) {
+bool FFmpegFileReader::Read(uint8_t** output, int* size, int64_t *dts, int64_t *pts) {
   if (!m_format_context || !m_codec_context || m_target_stream == -1) {
     *size = 0;
     *output = NULL;
@@ -120,12 +120,8 @@ bool FFmpegFileReader::Read(uint8_t** output, int* size, uint64_t *dts, uint64_t
       *output = new uint8_t[packet.size];
       *size = packet.size;
       memcpy(*output, packet.data, packet.size);
-      *dts = ConvertTimestamp(packet.dts,
-        m_format_context->streams[packet.stream_index]->time_base.den,
-        m_format_context->streams[packet.stream_index]->time_base.num);
-      *pts = ConvertTimestamp(packet.pts,
-        m_format_context->streams[packet.stream_index]->time_base.den,
-        m_format_context->streams[packet.stream_index]->time_base.num);
+      *dts = packet.dts;
+      *pts = packet.pts;
       if(m_format_context->pb)
         eof = m_format_context->pb->eof_reached;
       if(packet.size == 0)

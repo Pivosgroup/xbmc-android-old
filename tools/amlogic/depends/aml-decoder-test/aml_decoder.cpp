@@ -20,176 +20,41 @@ extern "C" {
 
 //-----------------------------------------------------------------------------------
 //-----------------------------------------------------------------------------------
-/* MPEG-4 esds (elementary stream descriptor) */
-typedef struct {
-  int version;
-  long flags;
-
-  uint16_t esid;
-  uint8_t stream_priority;
-
-  uint8_t  objectTypeId;
-  uint8_t  streamType;
-  uint32_t bufferSizeDB;
-  uint32_t maxBitrate;
-  uint32_t avgBitrate;
-
-  int      decoderConfigLen;
-  uint8_t* decoderConfig;
-} quicktime_esds_t;
-
-unsigned int descrLength(unsigned int len)
-{
-  int i;
-  for(i=1; len>>(7*i); i++);
-  return len + 1 + i;
-}
-
-void putDescr(ByteIOContext *pb, int tag, unsigned int size)
-{
-  int i= descrLength(size) - size - 2;
-  put_byte(pb, tag);
-  for(; i>0; i--)
-    put_byte(pb, (size>>(7*i)) | 0x80);
-  put_byte(pb, size & 0x7F);
-}
-
-void quicktime_write_esds(ByteIOContext *pb, quicktime_esds_t *esds)
-{
-  //quicktime_atom_t atom;
-  int decoderSpecificInfoLen = esds->decoderConfigLen ? descrLength(esds->decoderConfigLen):0;
-  //quicktime_atom_write_header(file, &atom, "esds");
-
-/*
-  put_byte(pb, 0);  // Version
-  put_be24(pb, 0);  // Flags
-
-  // ES descriptor
-  putDescr(pb, 0x03, 3 + descrLength(13 + decoderSpecificInfoLen) + descrLength(1));
-
-  put_be16(pb, esds->esid);
-  put_byte(pb, esds->stream_priority);
-  // DecoderConfig descriptor
-  putDescr(pb, 0x04, 13 + esds->decoderConfigLen);
-  // Object type indication
-  put_byte(pb, esds->objectTypeId); // objectTypeIndication
-  put_byte(pb, esds->streamType);   // streamType
-
-  put_be24(pb, esds->bufferSizeDB); // buffer size
-  put_be32(pb, esds->maxBitrate);   // max bitrate
-  put_be32(pb, esds->avgBitrate);   // average bitrate
-
-  // DecoderSpecific info descriptor
-  if (decoderSpecificInfoLen) {
-    putDescr(pb, 0x05, esds->decoderConfigLen);
-    put_buffer(pb, esds->decoderConfig, esds->decoderConfigLen);
-  }
-  // SL descriptor
-  putDescr(pb, 0x06, 1);
-  put_byte(pb, 0x02);
-*/
-
-  put_byte(pb, 0);  // Version
-
-  // ES descriptor
-  putDescr(pb, 0x03, 3 + descrLength(13 + decoderSpecificInfoLen) + descrLength(1));
-  put_be16(pb, esds->esid);
-  put_byte(pb, 0x00); // flags (= no flags)
-
-  // DecoderConfig descriptor
-  putDescr(pb, 0x04, 13 + decoderSpecificInfoLen);
-
-  // Object type indication
-  put_byte(pb, esds->objectTypeId);
-
-  // the following fields is made of 6 bits to identify the streamtype (4 for video, 5 for audio)
-  // plus 1 bit to indicate upstream and 1 bit set to 1 (reserved)
-  put_byte(pb, esds->streamType); // flags (0x11 = Visualstream)
-
-  put_be24(pb, esds->bufferSizeDB); // buffer size
-  //put_byte(pb,  track->enc->rc_buffer_size>>(3+16));    // Buffersize DB (24 bits)
-  //put_be16(pb, (track->enc->rc_buffer_size>>3)&0xFFFF); // Buffersize DB
-
-  put_be32(pb, esds->maxBitrate);   // max bitrate
-  put_be32(pb, esds->avgBitrate);   // average bitrate
-  //put_be32(pb, FFMAX(track->enc->bit_rate, track->enc->rc_max_rate)); // maxbitrate (FIXME should be max rate in any 1 sec window)
-  //if(track->enc->rc_max_rate != track->enc->rc_min_rate || track->enc->rc_min_rate==0)
-  //    put_be32(pb, 0); // vbr
-  //else
-  //    put_be32(pb, track->enc->rc_max_rate); // avg bitrate
-
-  // DecoderSpecific info descriptor
-  if (decoderSpecificInfoLen) {
-    putDescr(pb, 0x05, esds->decoderConfigLen);
-    put_buffer(pb, esds->decoderConfig, esds->decoderConfigLen);
-  }
-
-  // SL descriptor
-  putDescr(pb, 0x06, 1);
-  put_byte(pb, 0x02);
-
-  //quicktime_atom_write_footer(file, &atom);
-}
-
-quicktime_esds_t* quicktime_set_esds(const uint8_t * decoderConfig, int decoderConfigLen)
-{
-  // ffmpeg's codec->avctx->extradata, codec->avctx->extradata_size
-  // are decoderConfig/decoderConfigLen
-  quicktime_esds_t *esds;
-
-  esds = (quicktime_esds_t*)malloc(sizeof(quicktime_esds_t));
-  memset(esds, 0, sizeof(quicktime_esds_t));
-
-  esds->version         = 0;
-  esds->flags           = 0;
-  
-  esds->esid            = 0;
-  esds->stream_priority = 0;      // 16 ?
-  
-  esds->objectTypeId    = 32;     // 32 = CODEC_ID_MPEG4, 33 = CODEC_ID_H264
-  // the following fields is made of 6 bits to identify the streamtype (4 for video, 5 for audio)
-  // plus 1 bit to indicate upstream and 1 bit set to 1 (reserved)
-  esds->streamType      = 0x11;
-  esds->bufferSizeDB    = 64000;  // Hopefully not important :)
-  
-  // Maybe correct these later?
-  esds->maxBitrate      = 200000; // 0 for vbr
-  esds->avgBitrate      = 200000;
-  
-  esds->decoderConfigLen = decoderConfigLen;
-  esds->decoderConfig = (uint8_t*)malloc(esds->decoderConfigLen);
-  memcpy(esds->decoderConfig, decoderConfig, esds->decoderConfigLen);
-  return esds;
-}
-
-void quicktime_esds_dump(quicktime_esds_t * esds)
-{
-  int i;
-  printf("esds: \n");
-  printf(" Version:          %d\n",       esds->version);
-  printf(" Flags:            0x%06lx\n",  esds->flags);
-  printf(" ES ID:            0x%04x\n",   esds->esid);
-  printf(" Priority:         0x%02x\n",   esds->stream_priority);
-  printf(" objectTypeId:     %d\n",       esds->objectTypeId);
-  printf(" streamType:       0x%02x\n",   esds->streamType);
-  printf(" bufferSizeDB:     %d\n",       esds->bufferSizeDB);
-
-  printf(" maxBitrate:       %d\n",       esds->maxBitrate);
-  printf(" avgBitrate:       %d\n",       esds->avgBitrate);
-  printf(" decoderConfigLen: %d\n",       esds->decoderConfigLen);
-  printf(" decoderConfig:");
-  for(i = 0; i < esds->decoderConfigLen; i++) {
-    if(!(i % 16))
-      printf("\n ");
-    printf("%02x ", esds->decoderConfig[i]);
-  }
-  printf("\n");
-}
-
 // AppContext - Application state
 #define PTS_FREQ    90000
-#define UNIT_FREQ       96000
+#define UNIT_FREQ   96000
 #define AV_SYNC_THRESH PTS_FREQ*30
+
+#define INT64_0     INT64_C(0x8000000000000000)
+
+typedef int CODEC_TYPE;
+#define CODEC_UNKNOW        (0)
+#define CODEC_VIDEO         (1)
+#define CODEC_AUDIO         (2)
+#define CODEC_COMPLEX       (3)
+#define CODEC_SUBTITLE      (4)
+
+#define RW_WAIT_TIME        (20 * 1000) //20ms
+
+#define P_PRE       (0x02000000)
+#define F_PRE       (0x03000000)
+#define PLAYER_SUCCESS          (0)
+#define PLAYER_FAILED           (-(P_PRE|0x01))
+#define PLAYER_NOMEM            (-(P_PRE|0x02))
+#define PLAYER_EMPTY_P          (-(P_PRE|0x03))
+
+#define PLAYER_WR_FAILED        (-(P_PRE|0x21))
+#define PLAYER_WR_EMPTYP        (-(P_PRE|0x22))
+#define PLAYER_WR_FINISH        (P_PRE|0x1)
+
+#define PLAYER_PTS_ERROR        (-(P_PRE|0x31))
+
+#define FREE free
+#define MALLOC malloc
+
+#define log_print printf
+#define log_error printf
+
 
 #define HDR_BUF_SIZE 1024
 typedef struct hdr_buf {
@@ -197,29 +62,160 @@ typedef struct hdr_buf {
     int size;
 } hdr_buf_t;
 
+typedef struct am_packet {
+    CODEC_TYPE    type;
+    AVPacket      *avpkt;
+    int           avpkt_isvalid;
+    int           avpkt_newflag;
+    unsigned char *data;
+    unsigned char *buf;
+    int           data_size;
+    int           buf_size;
+    hdr_buf_t     *hdr;
+    codec_para_t  *codec;
+} am_packet_t;
+
+typedef enum {
+    STREAM_UNKNOWN = 0,
+    STREAM_TS,
+    STREAM_PS,
+    STREAM_ES,
+    STREAM_RM,
+    STREAM_AUDIO,
+    STREAM_VIDEO,
+} pstream_type;
+
+typedef union {
+    int64_t      total_bytes;
+    unsigned int vpkt_num;
+    unsigned int apkt_num;
+    unsigned int spkt_num;
+} read_write_size;
+
+typedef struct {
+    int             has_video;
+    vformat_t       video_format;
+    signed short    video_index;
+    unsigned short  video_pid;
+    unsigned int    video_width;
+    unsigned int    video_height;
+    float           video_ratio;
+    int             check_first_pts;
+    int             flv_flag;
+    int             h263_decodable;
+    int64_t         start_time;
+    float           video_duration;
+    float           video_pts;
+    unsigned int    video_rate;
+    unsigned int    video_codec_rate;
+    vdec_type_t     video_codec_type;
+    int             vdec_buf_len;
+    int             extradata_size;
+    uint8_t         *extradata;
+} v_stream_info_t;
+
+typedef struct {
+    int             has_audio;
+    int             resume_audio;
+    aformat_t       audio_format;
+    signed short    audio_index;
+    unsigned short  audio_pid;
+    int             audio_channel;
+    int             audio_samplerate;
+    int             check_first_pts;
+    int64_t         start_time;
+    int             adec_buf_len;
+    float           audio_duration;
+    int             extradata_size;
+    uint8_t         *extradata;
+} a_stream_info_t;
+
+typedef  struct {
+    unsigned int search_flag: 1;
+    unsigned int read_end_flag: 1;
+    unsigned int video_end_flag: 1;
+    unsigned int video_low_buffer: 1;
+    unsigned int audio_end_flag: 1;
+    unsigned int audio_low_buffer: 1;
+    unsigned int end_flag: 1;
+    unsigned int pts_valid: 1;
+    unsigned int sync_flag: 1;
+    unsigned int reset_flag: 1;
+    unsigned int no_audio_flag: 1;
+    unsigned int no_video_flag: 1;
+    unsigned int has_sub_flag: 1;
+    unsigned int loop_flag: 1;
+    unsigned int black_out: 1;
+    unsigned int raw_mode: 1;
+    unsigned int pause_flag: 1;
+    unsigned int fast_forward: 1;
+    unsigned int fast_backward: 1;
+    unsigned int init_ff_fr: 1;
+    unsigned int audio_switch_flag: 1;
+    unsigned int audio_mute: 1;   
+    unsigned int avsync_enable:1;
+    #ifdef DEBUG_VARIABLE_DUR
+    unsigned int info_variable:1;
+    #endif
+    unsigned int audio_switch_vmatch:1;
+    unsigned int audio_switch_smatch:1;
+    unsigned int switch_audio_id;
+    unsigned int switch_sub_id;
+    unsigned int is_playlist;	
+    int time_point;
+    int f_step;
+    int read_max_retry_cnt;
+    int audio_ready;		
+    int check_lowlevel_eagain_cnt;
+} p_ctrl_info_t;
+
+typedef struct player_info
+{
+	char *name;
+	//player_status last_sta;
+	//player_status status;		   /*stop,pause	*/
+	int full_time;	   /*Seconds	*/
+	int current_time;  /*Seconds	*/
+	int current_ms;	/*ms*/
+	int last_time;		
+	int error_no;  
+	int start_time;
+	int pts_video;
+	//int pts_pcrscr;
+	int current_pts;
+	long curtime_old_time;    
+	unsigned int video_error_cnt;
+	unsigned int audio_error_cnt;
+	float audio_bufferlevel; // relative value
+	float video_bufferlevel; // relative value
+	int64_t	bufed_pos;
+	int	bufed_time;/* Second*/
+} player_info_t;
+
 typedef struct
 {
   int               sourceWidth;
   int               sourceHeight;
   FFmpegFileReader  *demuxer;
   AVCodecContext    *codec_context;
-  codec_para_t      apcodec;
-  codec_para_t      vpcodec;
-  hdr_buf_t         vhdr;
-  bool              vhdr_newflag;
+  codec_para_t      acodec;
+  codec_para_t      vcodec;
 
+  int               player_id;
+  player_info_t     state;
+  p_ctrl_info_t     playctrl_info;
+  pstream_type      stream_type;
+  a_stream_info_t   astream_info;
+  v_stream_info_t   vstream_info;
+  am_packet_t       am_pkt;
+
+  read_write_size   read_size;
+  read_write_size   write_size;
+  int               buffering_enable;
+  float             buffering_threshhold_min;
+  float             buffering_threshhold_middle;
+  float             buffering_threshhold_max;
 } AppContext;
-
-/*
-// silly ffmpeg, this should be in libavcodec.a
-void av_free_packet(AVPacket *pkt) 
-{ 
-   if (pkt) { 
-     if (pkt->destruct) pkt->destruct(pkt); 
-     pkt->data = NULL; pkt->size = 0; 
-   } 
-}
-*/
 
 /* g_signal_abort is set to 1 in term/int signal handler */
 static unsigned int g_signal_abort = 0;
@@ -228,305 +224,6 @@ static void signal_handler(int iSignal)
   g_signal_abort = 1;
   printf("Terminating - Program received %s signal\n", \
     (iSignal == SIGINT? "SIGINT" : (iSignal == SIGTERM ? "SIGTERM" : "UNKNOWN")));
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////
-void fetch_nal(uint8_t *buffer, int buffer_size, int type, uint8_t **obuff, int *osize)
-{
-    int i;
-    uint8_t *data = buffer;
-    uint8_t *nal_buffer;
-    int nal_idx = 0;
-    int nal_len = 0;
-    int nal_type = 0;
-    int found = 0;
-    int done = 0;
-    
-    printf("Fetching NAL, type %d\n", type);
-    for (i = 0; i < buffer_size - 5; i++) {
-        if (data[i] == 0 && data[i + 1] == 0 && data[i + 2] == 0 
-            && data[i + 3] == 1) {
-            if (found == 1) {
-                nal_len = i - nal_idx;
-                done = 1;
-                break;
-            }
-
-            nal_type = (data[i + 4]) & 0x1f;
-            if (nal_type == type)
-            {
-                found = 1;
-                nal_idx = i + 4;
-                i += 4;
-            }
-        }
-    }
-    
-    /* Check if the NAL stops at the end */
-    if (found == 1 && done != 0 && i >= buffer_size - 4) {
-        nal_len = buffer_size - nal_idx;
-        done = 1;
-    }
-    
-    if (done == 1) {
-        printf("Found NAL, bytes [%d-%d] len [%d]\n", nal_idx, nal_idx + nal_len - 1, nal_len);
-        nal_buffer = (uint8_t*)malloc(nal_len);
-        memcpy(nal_buffer, &data[nal_idx], nal_len);
-        *obuff = nal_buffer;
-        *osize = nal_len;
-        //return nal_buffer;
-    } else {
-        printf("Did not find NAL type %d\n", type);
-        *obuff = NULL;
-        *osize = 0;
-        //return NULL;
-    }
-}
-
-#define NAL_LENGTH 4
-void h264_generate_avcc_atom_data(uint8_t *buffer, int buffer_size, uint8_t **obuff, int *osize)
-{
-  uint8_t *avcc = NULL;
-  uint8_t *avcc_data = NULL;
-  int avcc_len = 7;  // Default 7 bytes w/o SPS, PPS data
-  int i;
-
-  uint8_t *sps = NULL;
-  int sps_size;
-  uint8_t *sps_data = NULL;
-  int num_sps=0;
-
-  uint8_t *pps = NULL;
-  int pps_size;
-  int num_pps=0;
-
-  uint8_t profile;
-  uint8_t compatibly;
-  uint8_t level;
-
-  // 7 = SPS
-  fetch_nal(buffer, buffer_size, 7, &sps, &sps_size);
-  if (sps) {
-      num_sps = 1;
-      avcc_len += sps_size + 2;
-      sps_data = sps;
-
-      profile     = sps_data[1];
-      compatibly  = sps_data[2];
-      level       = sps_data[3]; 
-      
-      printf("SPS: profile=%d, compatibly=%d, level=%d\n", profile, compatibly, level);
-  } else {
-      printf("No SPS found\n");
-
-      profile     = 66;   // Default Profile: Baseline
-      compatibly  = 0;
-      level       = 30;   // Default Level: 3.0
-  }
-  // 8 = PPS
-  fetch_nal(buffer, buffer_size, 8, &pps, &pps_size); 
-  if (pps) {
-      num_pps = 1;
-      avcc_len += pps_size + 2;
-  } else {
-      printf("No PPS found\n");
-  }
-
-  avcc = (uint8_t*)malloc(avcc_len);
-  avcc_data = avcc;
-  avcc_data[0] = 1;             // [0] 1 byte - version
-  avcc_data[1] = profile;       // [1] 1 byte - h.264 stream profile
-  avcc_data[2] = compatibly;    // [2] 1 byte - h.264 compatible profiles
-  avcc_data[3] = level;         // [3] 1 byte - h.264 stream level
-  avcc_data[4] = 0xfc | (NAL_LENGTH-1);  // [4] 6 bits - reserved all ONES = 0xfc
-                                // [4] 2 bits - NAL length ( 0 - 1 byte; 1 - 2 bytes; 3 - 4 bytes)
-  avcc_data[5] = 0xe0 | num_sps;// [5] 3 bits - reserved all ONES = 0xe0
-                                // [5] 5 bits - number of SPS    
-  i = 6;
-  if (num_sps > 0) {
-    avcc_data[i++] = sps_size >> 8;
-    avcc_data[i++] = sps_size & 0xff;
-    memcpy(&avcc_data[i], sps, sps_size);
-    i += sps_size;
-    free(sps);
-  }
-  avcc_data[i++] = num_pps;     // [6] 1 byte  - number of PPS
-  if (num_pps > 0) {
-    avcc_data[i++] = pps_size >> 8;
-    avcc_data[i++] = pps_size & 0xff;
-    memcpy(&avcc_data[i], pps, pps_size);
-    i += pps_size;
-    free(pps);
-  }
-  *obuff = avcc;
-  *osize = avcc_len;
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////
-// TODO: refactor this so as not to need these ffmpeg routines.
-// These are not exposed in ffmpeg's API so we dupe them here.
-// AVC helper functions for muxers,
-//  * Copyright (c) 2006 Baptiste Coudurier <baptiste.coudurier@smartjog.com>
-// This is part of FFmpeg
-//  * License as published by the Free Software Foundation; either
-//  * version 2.1 of the License, or (at your option) any later version.
-#define VDA_RB24(x)                          \
-  ((((const uint8_t*)(x))[0] << 16) |        \
-   (((const uint8_t*)(x))[1] <<  8) |        \
-   ((const uint8_t*)(x))[2])
-
-#define VDA_RB32(x)                          \
-  ((((const uint8_t*)(x))[0] << 24) |        \
-   (((const uint8_t*)(x))[1] << 16) |        \
-   (((const uint8_t*)(x))[2] <<  8) |        \
-   ((const uint8_t*)(x))[3])
-
-static const uint8_t *my_avc_find_startcode_internal(const uint8_t *p, const uint8_t *end)
-{
-  const uint8_t *a = p + 4 - ((intptr_t)p & 3);
-
-  for (end -= 3; p < a && p < end; p++)
-  {
-    if (p[0] == 0 && p[1] == 0 && p[2] == 1)
-      return p;
-  }
-
-  for (end -= 3; p < end; p += 4)
-  {
-    uint32_t x = *(const uint32_t*)p;
-    if ((x - 0x01010101) & (~x) & 0x80808080) // generic
-    {
-      if (p[1] == 0)
-      {
-        if (p[0] == 0 && p[2] == 1)
-          return p;
-        if (p[2] == 0 && p[3] == 1)
-          return p+1;
-      }
-      if (p[3] == 0)
-      {
-        if (p[2] == 0 && p[4] == 1)
-          return p+2;
-        if (p[4] == 0 && p[5] == 1)
-          return p+3;
-      }
-    }
-  }
-
-  for (end += 3; p < end; p++)
-  {
-    if (p[0] == 0 && p[1] == 0 && p[2] == 1)
-      return p;
-  }
-
-  return end + 3;
-}
-
-const uint8_t *my_avc_find_startcode(const uint8_t *p, const uint8_t *end)
-{
-  const uint8_t *out= my_avc_find_startcode_internal(p, end);
-  if (p<out && out<end && !out[-1])
-    out--;
-  return out;
-}
-
-const int my_avc_parse_nal_units(ByteIOContext *pb, const uint8_t *buf_in, int size)
-{
-  const uint8_t *p = buf_in;
-  const uint8_t *end = p + size;
-  const uint8_t *nal_start, *nal_end;
-
-  size = 0;
-  nal_start = my_avc_find_startcode(p, end);
-  while (nal_start < end)
-  {
-    while (!*(nal_start++));
-    nal_end = my_avc_find_startcode(nal_start, end);
-    put_be32(pb, nal_end - nal_start);
-    put_buffer(pb, nal_start, nal_end - nal_start);
-    size += 4 + nal_end - nal_start;
-    nal_start = nal_end;
-  }
-  return size;
-}
-
-const int my_avc_parse_nal_units_buf(const uint8_t *buf_in, uint8_t **buf, int *size)
-{
-  ByteIOContext *pb;
-  int ret = url_open_dyn_buf(&pb);
-  if (ret < 0)
-    return ret;
-
-  my_avc_parse_nal_units(pb, buf_in, *size);
-
-  av_freep(buf);
-  *size = url_close_dyn_buf(pb, buf);
-  return 0;
-}
-
-const int my_isom_write_avcc(ByteIOContext *pb, const uint8_t *data, int len)
-{
-  // extradata from bytestream h264, convert to avcC atom data for bitstream
-  if (len > 6)
-  {
-    /* check for h264 start code */
-    if (VDA_RB32(data) == 0x00000001 || VDA_RB24(data) == 0x000001)
-    {
-      uint8_t *buf=NULL, *end, *start;
-      uint32_t sps_size=0, pps_size=0;
-      uint8_t *sps=0, *pps=0;
-
-      int ret = my_avc_parse_nal_units_buf(data, &buf, &len);
-      if (ret < 0)
-        return ret;
-      start = buf;
-      end = buf + len;
-
-      /* look for sps and pps */
-      while (buf < end)
-      {
-        unsigned int size;
-        uint8_t nal_type;
-        size = VDA_RB32(buf);
-        nal_type = buf[4] & 0x1f;
-        if (nal_type == 7) /* SPS */
-        {
-          sps = buf + 4;
-          sps_size = size;
-        }
-        else if (nal_type == 8) /* PPS */
-        {
-          pps = buf + 4;
-          pps_size = size;
-        }
-        buf += size + 4;
-      }
-      //assert(sps);
-
-      put_byte(pb, 1); /* version */
-      // 66 (Base line profile), 77 (main profile), 100 (high profile)
-      put_byte(pb, sps[1]); /* h.264 stream profile */
-      put_byte(pb, sps[2]); /* h.264 compatible profiles */
-      put_byte(pb, sps[3]); /* h.264 stream level */
-      put_byte(pb, 0xff); /* 6 bits reserved (111111) + 2 bits nal size length - 1 (11) */
-      put_byte(pb, 0xe1); /* 3 bits reserved (111) + 5 bits number of sps (00001) */
-
-      put_be16(pb, sps_size);
-      put_buffer(pb, sps, sps_size);
-      if (pps)
-      {
-        put_byte(pb, 1); /* number of pps */
-        put_be16(pb, pps_size);
-        put_buffer(pb, pps, pps_size);
-      }
-      av_free(start);
-    }
-    else
-    {
-      put_buffer(pb, data, len);
-    }
-  }
-  return 0;
 }
 
 uint64_t CurrentHostCounter(void)
@@ -563,8 +260,369 @@ int osd_blank(const char *path, int cmd)
 	return -1;
 }
 
+int  player_thread_wait(AppContext *player, int microseconds)
+{
+  usleep(microseconds);
+  
+  return 0;
+}
+
+static void player_para_init(AppContext *para)
+{
+    para->state.start_time = -1;
+    para->vstream_info.video_index = -1;
+    para->vstream_info.start_time = -1;
+    para->astream_info.audio_index = -1;
+    para->astream_info.start_time = -1;
+    //para->sstream_info.sub_index = -1;
+    //para->discontinue_point = 0;
+    //para->discontinue_flag = 0;
+}
+
 /*************************************************************************/
-static int h264_add_header(unsigned char *buf, int size,  hdr_buf_t *hdr)
+void av_packet_init(am_packet_t *pkt)
+{
+  pkt->avpkt  = NULL;
+  pkt->avpkt_isvalid = 0;
+  pkt->avpkt_newflag = 0;
+  pkt->codec  = NULL;
+  pkt->hdr    = NULL;
+  pkt->buf    = NULL;
+  pkt->buf_size = 0;
+  pkt->data   = NULL;
+  pkt->data_size  = 0;
+}
+
+/*************************************************************************/
+int check_in_pts(AppContext *para, am_packet_t *pkt)
+{
+    int last_duration = 0;
+    static int last_v_duration = 0, last_a_duration = 0;
+    int64_t pts;
+    float time_base_ratio = 0;
+    long long start_time = 0;
+
+    if (pkt->type == CODEC_AUDIO) {
+        time_base_ratio = para->astream_info.audio_duration;
+        start_time = para->astream_info.start_time;
+        last_duration = last_a_duration;
+    } else if (pkt->type == CODEC_VIDEO) {
+        time_base_ratio = para->vstream_info.video_pts;
+        start_time = para->vstream_info.start_time;
+        last_duration = last_v_duration;
+    }
+
+    if (para->stream_type == STREAM_ES && (pkt->type == CODEC_VIDEO || pkt->type == CODEC_AUDIO)) {
+        if ((int64_t)INT64_0 != pkt->avpkt->pts) {
+            pts = pkt->avpkt->pts * time_base_ratio;
+            if (pts < start_time) {
+                pts = pts * last_duration;
+            }
+
+            if (codec_checkin_pts(pkt->codec, pts) != 0) {
+                log_error("ERROR pid[%d]: check in pts error!\n", para->player_id);
+                return PLAYER_PTS_ERROR;
+            }
+            //log_print("[check_in_pts:%d]type=%d pkt->pts=%llx pts=%llx start_time=%llx \n",__LINE__,pkt->type,pkt->avpkt->pts,pts, start_time);
+
+        } else if ((int64_t)INT64_0 != pkt->avpkt->dts) {
+            pts = pkt->avpkt->dts * time_base_ratio * last_duration;
+            //log_print("[check_in_pts:%d]type=%d pkt->dts=%llx pts=%llx time_base_ratio=%.2f last_duration=%d\n",__LINE__,pkt->type,pkt->avpkt->dts,pts,time_base_ratio,last_duration);
+
+            if (codec_checkin_pts(pkt->codec, pts) != 0) {
+                log_error("ERROR pid[%d]: check in dts error!\n", para->player_id);
+                return PLAYER_PTS_ERROR;
+            }
+
+            if (pkt->type == CODEC_AUDIO) {
+                last_a_duration = pkt->avpkt->duration ? pkt->avpkt->duration : 1;
+            } else if (pkt->type == CODEC_VIDEO) {
+                last_v_duration = pkt->avpkt->duration ? pkt->avpkt->duration : 1;
+            }
+        } else {
+            if (!para->astream_info.check_first_pts && pkt->type == CODEC_AUDIO) {
+                if (codec_checkin_pts(pkt->codec, 0) != 0) {
+                    log_print("ERROR pid[%d]: check in 0 to audio pts error!\n", para->player_id);
+                    return PLAYER_PTS_ERROR;
+                }
+            }
+            if (!para->vstream_info.check_first_pts && pkt->type == CODEC_VIDEO) {
+                if (codec_checkin_pts(pkt->codec, 0) != 0) {
+                    log_print("ERROR pid[%d]: check in 0 to audio pts error!\n", para->player_id);
+                    return PLAYER_PTS_ERROR;
+                }
+            }
+        }
+        if (pkt->type == CODEC_AUDIO && !para->astream_info.check_first_pts) {
+            para->astream_info.check_first_pts = 1;
+        } else if (pkt->type == CODEC_VIDEO && !para->vstream_info.check_first_pts) {
+            para->vstream_info.check_first_pts = 1;
+        }
+    } else if (para->stream_type == STREAM_AUDIO) {
+        /*
+        if (!para->astream_info.check_first_pts) {
+            if (!url_support_time_seek(para->pFormatCtx->pb) &&
+                (para->playctrl_info.time_point == -1)) {
+
+                para->playctrl_info.time_point = 0;
+            }
+            pts = para->playctrl_info.time_point * PTS_FREQ;
+            if (codec_checkin_pts(pkt->codec, pts) != 0) {
+                log_print("ERROR pid[%d]: check in 0 to audio pts error!\n", para->player_id);
+                return PLAYER_PTS_ERROR;
+            }
+            para->astream_info.check_first_pts = 1;
+        }
+        */
+    }
+    return PLAYER_SUCCESS;
+}
+
+static int check_write_finish(AppContext *para, am_packet_t *pkt)
+{
+    if (para->playctrl_info.read_end_flag) {
+        if (para->playctrl_info.raw_mode
+            && (para->write_size.total_bytes == para->read_size.total_bytes)) {
+            return PLAYER_WR_FINISH;
+        }
+
+        if (!para->playctrl_info.raw_mode
+            && (para->write_size.vpkt_num == para->read_size.vpkt_num)
+            && (para->write_size.apkt_num == para->read_size.apkt_num)) {
+            return PLAYER_WR_FINISH;
+        }
+    }
+    return PLAYER_WR_FAILED;
+}
+
+static int write_header(AppContext *para, am_packet_t *pkt)
+{
+    int write_bytes = 0, len = 0;
+
+    if (pkt->hdr && pkt->hdr->size > 0) {
+        if ((NULL == pkt->codec) || (NULL == pkt->hdr->data)) {
+            log_error("[write_header]codec null!\n");
+            return PLAYER_EMPTY_P;
+        }
+        while (1) {
+            write_bytes = codec_write(pkt->codec, pkt->hdr->data + len, pkt->hdr->size - len);
+            if (write_bytes < 0 || write_bytes > (pkt->hdr->size - len)) {
+                if (-errno != AVERROR(EAGAIN)) {
+                    log_print("ERROR:write header failed!\n");
+                    return PLAYER_WR_FAILED;
+                } else {
+                    continue;
+                }
+            } else {
+#if DUMP_WRITE
+                int size;
+                //if(fd > 0 && pkt->type == CODEC_VIDEO)
+                if (fdw > 0) {
+                    size = write(fdw, pkt->hdr->data + len, write_bytes);
+                    if (size != write_bytes) {
+                        log_print("dump data write failed!size=%d bytes=%d\n", size, write_bytes);
+                    }
+                }
+#endif
+                len += write_bytes;
+                if (len == pkt->hdr->size) {
+                    break;
+                }
+            }
+        }
+    }
+    return PLAYER_SUCCESS;
+}
+
+int check_avbuffer_enough(AppContext *para, am_packet_t *pkt)
+{
+  return 1;
+}
+int write_av_packet(AppContext *para, am_packet_t *pkt)
+{
+    int write_bytes = 0, len = 0, ret;
+    unsigned char *buf;
+    int size ;
+#if DUMP_WRITE
+    if (fdw == -1) {
+        fdw = open("./dump/dump_write.dat", O_CREAT | O_RDWR);
+        if (fdw < 0) {
+            log_print("creat dump file failed!fd=%d\n", fdw);
+        }
+    }
+#endif
+
+    if (pkt->avpkt_newflag) {
+        if (pkt->type != CODEC_SUBTITLE) {
+            if (pkt->avpkt_isvalid) {
+                ret = check_in_pts(para, pkt);
+                if (ret != PLAYER_SUCCESS) {
+                    log_error("check in pts failed\n");
+                    return PLAYER_WR_FAILED;
+                }
+            }
+            if (write_header(para, pkt) == PLAYER_WR_FAILED) {
+                log_error("[%s]write header failed!\n", __FUNCTION__);
+                return PLAYER_WR_FAILED;
+            }
+        } else {
+            // process_es_subtitle(para, pkt);
+        }
+        pkt->avpkt_newflag = 0;
+    }
+	
+    buf = pkt->data;
+    size = pkt->data_size ;
+    if (size == 0 && pkt->avpkt_isvalid) {
+        if ((pkt->type == CODEC_VIDEO) && (!para->playctrl_info.raw_mode)) {
+            para->write_size.vpkt_num ++;
+        } else if ((pkt->type == CODEC_AUDIO) && (!para->playctrl_info.raw_mode)) {
+            para->write_size.apkt_num ++;
+        }
+        if (pkt->avpkt) {
+            av_free_packet(pkt->avpkt);
+        }
+        pkt->avpkt_isvalid = 0;
+    }
+    while (size > 0 && pkt->avpkt_isvalid) {
+        write_bytes = codec_write(pkt->codec, (char *)buf, size);
+        if (write_bytes < 0 || write_bytes > size) {
+            if (-errno != AVERROR(EAGAIN)) {
+                para->playctrl_info.check_lowlevel_eagain_cnt = 0;
+                log_print("write codec data failed!\n");
+                return PLAYER_WR_FAILED;
+            } else {
+                // EAGAIN to see if buffer full or write time out too much		
+				if(check_avbuffer_enough(para, pkt)){
+					++ para->playctrl_info.check_lowlevel_eagain_cnt;
+				}else{
+					para->playctrl_info.check_lowlevel_eagain_cnt = 0;
+				}
+				
+				if (para->playctrl_info.check_lowlevel_eagain_cnt > 50) {
+            // reset decoder
+            para->playctrl_info.check_lowlevel_eagain_cnt = 0;
+            para->playctrl_info.reset_flag = 1;
+            para->playctrl_info.end_flag = 1;
+            if (para->state.start_time != -1) {
+                para->playctrl_info.time_point = (para->state.pts_video - para->state.start_time)/ PTS_FREQ;
+            } else {
+                para->playctrl_info.time_point = para->state.pts_video/ PTS_FREQ;
+            }
+            
+            log_print("$$$$$$[type:%d] write blocked, need reset decoder!$$$$$$\n", pkt->type);
+        }				
+        pkt->data += len;
+        pkt->data_size -= len;
+        player_thread_wait(para, RW_WAIT_TIME);
+				if(para->playctrl_info.check_lowlevel_eagain_cnt > 0){
+                	log_print("[%s]eagain:data_size=%d type=%d rsize=%lld wsize=%lld cnt=%d\n", \
+								__FUNCTION__, pkt->data_size, pkt->type, para->read_size.total_bytes, \
+								para->write_size.total_bytes, para->playctrl_info.check_lowlevel_eagain_cnt);
+				}
+                return PLAYER_SUCCESS;
+            }
+        } else {
+#if DUMP_WRITE
+            int dsize;
+            //if(fd > 0 && debug && pkt->type == CODEC_VIDEO)
+            if (fdw > 0) {
+                dsize = write(fdw, buf, write_bytes);
+                if (dsize != write_bytes) {
+                    log_print("dump data write failed!size=%d len=%d\n", size, len);
+                }
+            }
+#endif
+            para->playctrl_info.check_lowlevel_eagain_cnt = 0;
+            len += write_bytes;
+            if (len == pkt->data_size) {
+                if ((pkt->type == CODEC_VIDEO) && (!para->playctrl_info.raw_mode)) {
+                    para->write_size.vpkt_num ++;
+                } else if ((pkt->type == CODEC_AUDIO) && (!para->playctrl_info.raw_mode)) {
+                    para->write_size.apkt_num ++;
+                }
+                if (para->playctrl_info.raw_mode) {
+                    para->write_size.total_bytes += len;
+                }
+                if (pkt->avpkt) {
+                    av_free_packet(pkt->avpkt);
+                }
+                pkt->avpkt_isvalid = 0;
+                pkt->data_size = 0;
+                //log_print("[%s:%d]write finish pkt->data_size=%d\r",__FUNCTION__, __LINE__,pkt->data_size);               
+                break;
+            } else if (len < pkt->data_size) {
+                buf += write_bytes;
+                size -= write_bytes;
+            } else {
+                return PLAYER_WR_FAILED;
+            }
+
+        }
+    }
+    if (check_write_finish(para, pkt) == PLAYER_WR_FINISH) {
+#if DUMP_WRITE
+        if (fdw > 0) {
+            close(fdw);
+        }
+#endif
+        return PLAYER_WR_FINISH;
+    }
+    return PLAYER_SUCCESS;
+}
+
+static int check_size_in_buffer(unsigned char *p, int len)
+{
+    unsigned int size;
+    unsigned char *q = p;
+    while ((q + 4) < (p + len)) {
+        size = (*q << 24) | (*(q + 1) << 16) | (*(q + 2) << 8) | (*(q + 3));
+        if (size & 0xff000000) {
+            return 0;
+        }
+
+        if (q + size + 4 == p + len) {
+            return 1;
+        }
+
+        q += size + 4;
+    }
+    return 0;
+}
+
+static int check_size_in_buffer3(unsigned char *p, int len)
+{
+    unsigned int size;
+    unsigned char *q = p;
+    while ((q + 3) < (p + len)) {
+        size = (*q << 16) | (*(q + 1) << 8) | (*(q + 2));
+
+        if (q + size + 3 == p + len) {
+            return 1;
+        }
+
+        q += size + 3;
+    }
+    return 0;
+}
+
+static int check_size_in_buffer2(unsigned char *p, int len)
+{
+    unsigned int size;
+    unsigned char *q = p;
+    while ((q + 2) < (p + len)) {
+        size = (*q << 8) | (*(q + 1));
+
+        if (q + size + 2 == p + len) {
+            return 1;
+        }
+
+        q += size + 2;
+    }
+    return 0;
+}
+
+static int h264_add_header(unsigned char *buf, int size, am_packet_t *pkt)
 {
     char nal_start_code[] = {0x0, 0x0, 0x0, 0x1};
     int nalsize;
@@ -572,21 +630,21 @@ static int h264_add_header(unsigned char *buf, int size,  hdr_buf_t *hdr)
     int tmpi;
     unsigned char* extradata = buf;
     int header_len = 0;
-    char* buffer = hdr->data;
+    char* buffer = pkt->hdr->data;
 
     p = extradata;
     if (size < 4) {
-        return 0;
+        return PLAYER_FAILED;
     }
 
     if (size < 10) {
         printf("avcC too short\n");
-        return 0;
+        return PLAYER_FAILED;
     }
 
     if (*p != 1) {
         printf(" Unkonwn avcC version %d\n", *p);
-        return 0;
+        return PLAYER_FAILED;
     }
 
     int cnt = *(p + 5) & 0x1f; //number of sps
@@ -615,17 +673,96 @@ static int h264_add_header(unsigned char *buf, int size,  hdr_buf_t *hdr)
         printf("header_len %d is larger than max length\n", header_len);
         return 0;
     }
-    hdr->size = header_len;
-    return 1;
+    pkt->hdr->size = header_len;
+    pkt->type = CODEC_VIDEO;
+
+    return PLAYER_SUCCESS;
+}
+static int h264_write_header(AppContext *para, am_packet_t *pkt)
+{
+    AVCodecContext *avcodec;
+    int ret = -1;
+
+    avcodec = para->codec_context;
+    ret = h264_add_header(avcodec->extradata, avcodec->extradata_size, pkt);
+    if (ret == PLAYER_SUCCESS) {
+        //if (ctx->vcodec) {
+        if (1) {
+            pkt->codec = &para->vcodec;
+        } else {
+            log_print("[pre_header_feeding]invalid video codec!\n");
+            return PLAYER_EMPTY_P;
+        }
+
+        pkt->avpkt_newflag = 1;
+        ret = write_av_packet(para, pkt);
+    }
+    return ret;
+}
+
+int h264_update_frame_header(am_packet_t *pkt)
+{
+    int nalsize, size = pkt->data_size;
+    unsigned char *data = pkt->data;
+    unsigned char *p = data;
+    if (p != NULL) {
+        if (check_size_in_buffer(p, size)) {
+            while ((p + 4) < (data + size)) {
+                nalsize = (*p << 24) | (*(p + 1) << 16) | (*(p + 2) << 8) | (*(p + 3));
+                *p = 0;
+                *(p + 1) = 0;
+                *(p + 2) = 0;
+                *(p + 3) = 1;
+                p += (nalsize + 4);
+            }
+            return PLAYER_SUCCESS;
+        } else if (check_size_in_buffer3(p, size)) {
+            while ((p + 3) < (data + size)) {
+                nalsize = (*p << 16) | (*(p + 1) << 8) | (*(p + 2));
+                *p = 0;
+                *(p + 1) = 0;
+                *(p + 2) = 1;
+                p += (nalsize + 3);
+            }
+            return PLAYER_SUCCESS;
+        } else if (check_size_in_buffer2(p, size)) {
+            unsigned char *new_data;
+            int new_len = 0;
+
+            new_data = (unsigned char *)MALLOC(size + 2 * 1024);
+            if (!new_data) {
+                return PLAYER_NOMEM;
+            }
+
+            while ((p + 2) < (data + size)) {
+                nalsize = (*p << 8) | (*(p + 1));
+                *(new_data + new_len) = 0;
+                *(new_data + new_len + 1) = 0;
+                *(new_data + new_len + 2) = 0;
+                *(new_data + new_len + 3) = 1;
+                memcpy(new_data + new_len + 4, p + 2, nalsize);
+                p += (nalsize + 2);
+                new_len += nalsize + 4;
+            }
+
+            FREE(pkt->buf);
+
+            pkt->buf = new_data;
+            pkt->buf_size = size + 2 * 1024;
+            pkt->data = pkt->buf;
+            pkt->data_size = new_len;
+        }
+    } else {
+        log_error("[%s]invalid pointer!\n", __FUNCTION__);
+        return PLAYER_FAILED;
+    }
+    return PLAYER_SUCCESS;
 }
 
 int main(int argc, char * const argv[])
 {
 	int ret = CODEC_ERROR_NONE;
-  bool convert_bytestream = false;
   std::string input_filename;
-  float time_base_ratio;
-  int video_rate;
 
   if (argc > 1) {
     for (int i = 1; i < argc; i++) {
@@ -657,6 +794,9 @@ int main(int argc, char * const argv[])
   AppContext ctx;
   memset(&ctx, 0, sizeof(ctx));
 
+  player_para_init(&ctx);
+  av_packet_init(&ctx.am_pkt);
+
   // create the ffmepg file reader/demuxer
   ctx.demuxer = new FFmpegFileReader(input_filename.c_str());
   if (!ctx.demuxer->Initialize()) {
@@ -670,151 +810,56 @@ int main(int argc, char * const argv[])
     goto fail;
   }
 
+  dump_extradata(&ctx);
+
   ctx.sourceWidth = ctx.codec_context->width;
   ctx.sourceHeight = ctx.codec_context->height;
   printf("video width(%d), height(%d), extradata_size(%d)\n",
     (int)ctx.sourceWidth, (int)ctx.sourceHeight, ctx.codec_context->extradata_size);
-  dump_extradata(&ctx);
 
-  time_base_ratio = ((float)ctx.codec_context->time_base.num / ctx.codec_context->time_base.den) * PTS_FREQ;
-  //video_rate = UNIT_FREQ * ctx.codec_context->r_frame_rate.den / ctx.codec_context->r_frame_rate.num;
+  //ctx.vstream_info.video_pid = (unsigned short)ctx.codec_context->id;
+  if (ctx.codec_context->time_base.den) {
+    ctx.vstream_info.video_duration = ((float)ctx.codec_context->time_base.num / ctx.codec_context->time_base.den) * UNIT_FREQ;
+  }
+  ctx.vstream_info.video_width  = ctx.codec_context->width;
+  ctx.vstream_info.video_height = ctx.codec_context->height;
+  ctx.vstream_info.video_ratio  = (float)ctx.codec_context->sample_aspect_ratio.num / ctx.codec_context->sample_aspect_ratio.den;
+  //ctx.vstream_info.video_rate   = UNIT_FREQ * ctx.codec_context->r_frame_rate.den / ctx.codec_context->r_frame_rate.num;
 
-/*
-            p_para->vstream_info.video_pid      = (unsigned short)pStream->id;
-            if (pStream->time_base.den) {
-                p_para->vstream_info.video_duration = ((float)pStream->time_base.num / pStream->time_base.den) * UNIT_FREQ;
-            }
-            p_para->vstream_info.video_width    = pCodecCtx->width;
-            p_para->vstream_info.video_height   = pCodecCtx->height;
-            p_para->vstream_info.video_ratio    = (float)pStream->sample_aspect_ratio.num / pStream->sample_aspect_ratio.den;
-            p_para->vstream_info.video_rate = UNIT_FREQ * pStream->r_frame_rate.den / pStream->r_frame_rate.num;
-*/
   printf("\n*********AMLOGIC CODEC PLAYER DEMO************\n\n");
-	osd_blank("/sys/class/graphics/fb0/blank", 1);
-	osd_blank("/sys/class/graphics/fb1/blank", 1);
-	osd_blank("/sys/class/tsync/enable", 1);
+	//osd_blank("/sys/class/graphics/fb0/blank", 1);
+	//osd_blank("/sys/class/graphics/fb1/blank", 1);
+	//osd_blank("/sys/class/tsync/enable", 1);
 
-	memset(&ctx.apcodec, 0, sizeof(codec_para_t));	
-	memset(&ctx.vpcodec, 0, sizeof(codec_para_t));	
-
-	ctx.vpcodec.has_video = 1;
-	//ctx.vpcodec.video_pid = 0x1022;
+  ctx.vcodec.has_video = 1;
+  //ctx.vcodec.video_pid = 0x1022;
 
   switch(ctx.codec_context->codec_id)
   {
     case CODEC_ID_H264:
       printf("CODEC_ID_H264\n");
 
-      ctx.vpcodec.video_type = VFORMAT_H264;
+      ctx.vcodec.video_type = VFORMAT_H264;
       #define EXTERNAL_PTS (1)
       #define SYNC_OUTSIDE (2)
-      ctx.vpcodec.am_sysinfo.param = (void*)(EXTERNAL_PTS | SYNC_OUTSIDE);
-      ctx.vpcodec.stream_type = STREAM_TYPE_ES_VIDEO;
-      ctx.vpcodec.am_sysinfo.format = VIDEO_DEC_FORMAT_H264;
-      ctx.vpcodec.am_sysinfo.rate   = 25;
-      ctx.vpcodec.am_sysinfo.width  = ctx.sourceWidth;
-      ctx.vpcodec.am_sysinfo.height = ctx.sourceHeight;
-      ctx.vpcodec.has_audio = 0;
-
-      if (ctx.codec_context->extradata_size) {
-        // valid avcC atom data always starts with the value 1 (version)
-        ctx.vhdr.data = (char *)malloc(HDR_BUF_SIZE);
-
-        if ( *ctx.codec_context->extradata == 1 ) {
-          printf("using existing avcC atom data\n");
-          
-          h264_add_header(ctx.codec_context->extradata, ctx.codec_context->extradata_size, &ctx.vhdr);
-          ctx.vhdr_newflag = true;
-        } else {
-          if (ctx.codec_context->extradata[0] == 0 && 
-              ctx.codec_context->extradata[1] == 0 && 
-              ctx.codec_context->extradata[2] == 0 && 
-              ctx.codec_context->extradata[3] == 1)
-          {
-            uint8_t *saved_extradata;
-            unsigned int saved_extrasize;
-            saved_extradata = ctx.codec_context->extradata;
-            saved_extrasize = ctx.codec_context->extradata_size;
-
-            // video content is from x264 or from bytestream h264 (AnnexB format)
-            // NAL reformating to bitstream format needed
-            ByteIOContext *pb;
-            if (url_open_dyn_buf(&pb) < 0)
-              return false;
-
-            convert_bytestream = true;
-            // create a valid avcC atom data from ffmpeg's extradata
-            my_isom_write_avcc(pb, ctx.codec_context->extradata, ctx.codec_context->extradata_size);
-            // unhook from ffmpeg's extradata
-            ctx.codec_context->extradata = NULL;
-            // extract the avcC atom data into extradata then write it into avcCData for VDADecoder
-            ctx.codec_context->extradata_size = url_close_dyn_buf(pb, &ctx.codec_context->extradata);
-            printf("convert to avcC atom data\n");
-            dump_extradata(&ctx);
-            
-            h264_add_header(ctx.codec_context->extradata, ctx.codec_context->extradata_size, &ctx.vhdr);
-            ctx.vhdr_newflag = true;
-            // done with the converted extradata, we MUST free using av_free
-            av_free(ctx.codec_context->extradata);
-            //restore orignal contents
-            ctx.codec_context->extradata = saved_extradata;
-            ctx.codec_context->extradata_size = saved_extrasize;
-          } else {
-            printf("%s - invalid avcC atom data", __FUNCTION__);
-            return false;
-          }
-        }
-      }
+      ctx.vcodec.am_sysinfo.param = (void*)(EXTERNAL_PTS | SYNC_OUTSIDE);
+      ctx.vcodec.stream_type = STREAM_TYPE_ES_VIDEO;
+      ctx.vcodec.am_sysinfo.format = VIDEO_DEC_FORMAT_H264;
+      ctx.vcodec.am_sysinfo.rate   = 25;
+      ctx.vcodec.am_sysinfo.width  = ctx.sourceWidth;
+      ctx.vcodec.am_sysinfo.height = ctx.sourceHeight;
+      ctx.vcodec.has_audio = 0;
+      
+      ctx.am_pkt.hdr = (hdr_buf_t*)MALLOC(sizeof(hdr_buf_t));
+      ctx.am_pkt.hdr->data = (char *)MALLOC(HDR_BUF_SIZE);
     break;
     case CODEC_ID_MPEG4:
       printf("CODEC_ID_MPEG4\n");
-      ctx.vpcodec.video_type = VFORMAT_MPEG4;
-      /*
-      if (ctx.codec_context->extradata_size) {
-        ByteIOContext *pb;
-        quicktime_esds_t *esds;
-        uint8_t *saved_extradata;
-        unsigned int saved_extrasize;
-        saved_extradata = ctx.codec_context->extradata;
-        saved_extrasize = ctx.codec_context->extradata_size;
-
-        if (url_open_dyn_buf(&pb) < 0)
-          return false;
-
-        esds = quicktime_set_esds(ctx.codec_context->extradata, ctx.codec_context->extradata_size);
-        quicktime_write_esds(pb, esds);
-
-        // unhook from ffmpeg's extradata
-        ctx.codec_context->extradata = NULL;
-        // extract the esds atom decoderConfig from extradata
-        ctx.codec_context->extradata_size = url_close_dyn_buf(pb, &ctx.codec_context->extradata);
-        free(esds->decoderConfig);
-        free(esds);
-
-        ctx.fmt_desc = vtdec_create_format_description_from_codec_data(&ctx, 'esds');
-
-        // done with the converted extradata, we MUST free using av_free
-        av_free(ctx.codec_context->extradata);
-        //restore orignal contents
-        ctx.codec_context->extradata = saved_extradata;
-        ctx.codec_context->extradata_size = saved_extrasize;
-      } else {
-        ctx.fmt_desc = vtdec_create_format_description(&ctx);
-      }
-      */
+      ctx.vcodec.video_type = VFORMAT_MPEG4;
     break;
     case CODEC_ID_MPEG2VIDEO:
       printf("CODEC_ID_MPEG2VIDEO\n");
-      ctx.vpcodec.video_type = VFORMAT_MPEG12;
-      /*
-      if (ctx.codec_context->extradata_size) {
-        // mp2p
-        // mp2t
-        ctx.fmt_desc = vtdec_create_format_description_from_codec_data(&ctx, '1234');
-      } else {
-        ctx.fmt_desc = vtdec_create_format_description(&ctx);
-      }
-      */
+      ctx.vcodec.video_type = VFORMAT_MPEG12;
     break;
     default:
       fprintf(stderr, "ERROR: Invalid FFmpegFileReader Codec Format (not h264/mpeg4) = %d\n",
@@ -823,7 +868,7 @@ int main(int argc, char * const argv[])
     break;
   }
 
-	ret = codec_init(&ctx.vpcodec);
+	ret = codec_init(&ctx.vcodec);
 	if(ret != CODEC_ERROR_NONE)
 	{
 		printf("codec init failed, ret=-0x%x", -ret);
@@ -832,79 +877,67 @@ int main(int argc, char * const argv[])
 	printf("video codec ok!\n");
 
 
-	ret = codec_init_cntl(&ctx.vpcodec);
+	ret = codec_init_cntl(&ctx.vcodec);
 	if( ret != CODEC_ERROR_NONE )
 	{
 		printf("codec_init_cntl error\n");
 		return -1;
 	}
-	//codec_set_cntl_avthresh(&ctx.vpcodec, AV_SYNC_THRESH);
-	//codec_set_cntl_syncthresh(&ctx.vpcodec, ctx.vpcodec.has_audio);
+	//codec_set_cntl_avthresh(&ctx.vcodec, AV_SYNC_THRESH);
+	//codec_set_cntl_syncthresh(&ctx.vcodec, ctx.vcodec.has_audio);
 
 
   {
-    int frame_count, byte_count, total = 0;
-    uint64_t bgn, end;
-    uint8_t* data;
-    uint64_t dts, pts;
+    int frame_count, total = 0;
+    int64_t bgn, end;
+    int64_t dts, pts;
 
-    ctx.demuxer->Read(&data, &byte_count, &dts, &pts);
-    printf("byte_count(%d), dts(%llu), pts(%llu)\n", byte_count, dts, pts);
-    if (!byte_count) {
+    ctx.am_pkt.codec = &ctx.vcodec;
+    if (ctx.codec_context->extradata_size) {
+      if ( *ctx.codec_context->extradata == 1 ) {
+        printf("using existing avcC atom data\n");
+        h264_write_header(&ctx, &ctx.am_pkt);
+      }
+    }
+
+    ctx.demuxer->Read(&ctx.am_pkt.data, &ctx.am_pkt.data_size, &dts, &pts);
+    printf("byte_count(%d), dts(%llu), pts(%llu)\n", ctx.am_pkt.data_size, dts, pts);
+    if (!ctx.am_pkt.data_size) {
       fprintf(stderr, "ERROR: Zero bytes read from input\n");
       //goto fail;
     }
+    ctx.am_pkt.avpkt_newflag = 1;
+    ctx.am_pkt.avpkt_isvalid = 1;
 
     usleep(10000);
     frame_count = 0;
     bool done = false;
     while (!g_signal_abort && !done && (frame_count < 5000)) {
-      int demuxer_bytes = byte_count;
-      uint8_t *demuxer_content = data;
-      codec_para_t *pcodec = &ctx.vpcodec;
-
-      codec_checkin_pts(pcodec, pts * time_base_ratio);
-      if (ctx.vhdr_newflag) {
-        do {
-          ret = codec_write(pcodec, ctx.vhdr.data, ctx.vhdr.size);
-        } while(ret < 0);
-        ctx.vhdr_newflag = false;
-      }
-      if (convert_bytestream) {
-        // convert demuxer packet from bytestream (AnnexB) to bitstream
-        ByteIOContext *pb;
-
-        if(url_open_dyn_buf(&pb) < 0)
-          goto fail;
-
-        demuxer_bytes = my_avc_parse_nal_units(pb, data, byte_count);
-        demuxer_bytes = url_close_dyn_buf(pb, &demuxer_content);
-      }
+      h264_update_frame_header(&ctx.am_pkt);
       
       bgn = CurrentHostCounter() * 1000 / CurrentHostFrequency();
 
-      do {
-        ret = codec_write(pcodec, demuxer_content, demuxer_bytes);
-      } while(ret < 0);
+      ret = write_av_packet(&ctx, &ctx.am_pkt);
+      delete ctx.am_pkt.data;
 
       end = CurrentHostCounter() * 1000 / CurrentHostFrequency();
-      if (convert_bytestream)
-        av_free(demuxer_content);
 
-      free(data);
       fprintf(stdout, "decode time(%llu)\n", end-bgn);
       frame_count++;
-      usleep(10000);
+      //usleep(10000);
 
-      ctx.demuxer->Read(&data, &byte_count, &dts, &pts);
-      if (!byte_count) done = true;
-      total += byte_count;
+      ctx.demuxer->Read(&ctx.am_pkt.data, &ctx.am_pkt.data_size, &dts, &pts);
+      ctx.am_pkt.avpkt_newflag = 1;
+      ctx.am_pkt.avpkt_isvalid = 1;
+
+      if (!ctx.am_pkt.data_size) done = true;
+      total += ctx.am_pkt.data_size;
     }
   }
 
 fail:
-	codec_close(&ctx.apcodec);
-	codec_close(&ctx.vpcodec);
+	codec_close(&ctx.acodec);
+	codec_close(&ctx.vcodec);
 
   return 0;
 }
