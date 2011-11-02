@@ -34,8 +34,9 @@ bool FFmpegFileReader::Initialize() {
   av_register_all();
   av_register_protocol(&kFFmpegFileProtocol);
 
-  int result = av_open_input_file(&m_format_context, m_filename.c_str(),
-                                  NULL, 0, NULL);
+  //int result = av_open_input_file(&m_format_context, m_filename.c_str(), NULL, 0, NULL);
+  // amffmpeg adds another param to av_open_input_file
+  int result = av_open_input_file(&m_format_context, m_filename.c_str(), NULL, 0, NULL, NULL);
   if (result < 0) {
     switch (result) {
       case AVERROR_NOFMT:

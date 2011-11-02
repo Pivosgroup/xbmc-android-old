@@ -11,7 +11,7 @@ BIN = aml_decoder
 
 LIBS+= -lz -lc -lbz2 -pthread -lamcodec -lavformat -lavcodec -lavutil
 CPPFLAGS+= -g -O0 -Wall -D__STDC_CONSTANT_MACROS
-CPPFLAGS+= -march=armv5te
+CPPFLAGS+= -mcpu=cortex-a9 -mfpu=neon
 
 SRCFILES = aml_decoder.cpp \
            file_reader_util.cpp \
