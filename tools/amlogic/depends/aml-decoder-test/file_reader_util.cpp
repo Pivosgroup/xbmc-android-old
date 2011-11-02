@@ -185,7 +185,19 @@ uint64_t FFmpegFileReader::ConvertTimestamp(uint64_t pts, int den, int num)
   return timestamp*DVD_TIME_BASE*1000.0;
 }
 
+int FFmpegFileReader::GetVideoIndex(void)
+{
+  return(m_target_stream);
+}
+
 AVCodecContext* FFmpegFileReader::GetCodecContext(void)
 {
   return(m_codec_context);
 }
+
+AVFormatContext* FFmpegFileReader::GetFormatContext(void)
+{
+  return(m_format_context);
+}
+
+

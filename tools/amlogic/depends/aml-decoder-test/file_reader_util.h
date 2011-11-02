@@ -23,7 +23,9 @@ class FFmpegFileReader {
   virtual bool Read(uint8_t** output, int* size, int64_t *dts, int64_t *pts);
   uint64_t ConvertTimestamp(uint64_t pts, int den, int num);
 
+  int GetVideoIndex(void);
   AVCodecContext* GetCodecContext(void);
+  AVFormatContext* GetFormatContext(void);
 
  private:
   std::string m_filename;

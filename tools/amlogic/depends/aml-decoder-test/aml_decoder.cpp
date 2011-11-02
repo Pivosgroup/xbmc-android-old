@@ -27,6 +27,9 @@ extern "C" {
 
 #define INT64_0     INT64_C(0x8000000000000000)
 
+#define EXTERNAL_PTS (1)
+#define SYNC_OUTSIDE (2)
+
 typedef int CODEC_TYPE;
 #define CODEC_UNKNOW        (0)
 #define CODEC_VIDEO         (1)
@@ -48,6 +51,7 @@ typedef int CODEC_TYPE;
 #define PLAYER_WR_FINISH        (P_PRE|0x1)
 
 #define PLAYER_PTS_ERROR        (-(P_PRE|0x31))
+#define PLAYER_CHECK_CODEC_ERROR  (-(P_PRE|0x39))
 
 #define FREE free
 #define MALLOC malloc
@@ -198,6 +202,7 @@ typedef struct
   int               sourceHeight;
   FFmpegFileReader  *demuxer;
   AVCodecContext    *codec_context;
+  AVFormatContext   *format_context;
   codec_para_t      acodec;
   codec_para_t      vcodec;
 
@@ -296,6 +301,24 @@ void am_packet_init(am_packet_t *pkt)
 }
 
 /*************************************************************************/
+static int check_vcodec_state(codec_para_t *codec, struct vdec_status *dec, struct buf_status *buf)
+{
+    int ret = 0;
+
+    ret = codec_get_vbuf_state(codec,  buf);
+    if (ret != 0) {
+        log_error("codec_get_vbuf_state error: %x\n", -ret);
+    }
+
+    ret = codec_get_vdec_state(codec, dec);
+    if (ret != 0) {
+        log_error("codec_get_vdec_state error: %x\n", -ret);
+        ret = PLAYER_CHECK_CODEC_ERROR;
+    }
+
+    return ret;
+}
+
 int check_in_pts(AppContext *para, am_packet_t *pkt)
 {
     int last_duration = 0;
@@ -702,6 +725,39 @@ static int h264_write_header(AppContext *para, am_packet_t *pkt)
     return ret;
 }
 
+int pre_header_feeding(AppContext *para, am_packet_t *pkt)
+{
+    int ret;
+    if (para->stream_type == STREAM_ES && para->vstream_info.has_video) {
+        if (pkt->hdr == NULL) {
+            pkt->hdr = (hdr_buf_t*)MALLOC(sizeof(hdr_buf_t));
+            pkt->hdr->data = (char *)MALLOC(HDR_BUF_SIZE);
+            if (!pkt->hdr->data) {
+                log_print("[pre_header_feeding] NOMEM!");
+                return PLAYER_NOMEM;
+            }
+        }
+
+        if (VFORMAT_H264 == para->vstream_info.video_format) {
+            ret = h264_write_header(para, pkt);
+            if (ret != PLAYER_SUCCESS) {
+                return ret;
+            }
+        }
+
+
+        if (pkt->hdr) {
+            if (pkt->hdr->data) {
+                FREE(pkt->hdr->data);
+                pkt->hdr->data = NULL;
+            }
+            FREE(pkt->hdr);
+            pkt->hdr = NULL;
+        }
+    }
+    return PLAYER_SUCCESS;
+}
+
 int h264_update_frame_header(am_packet_t *pkt)
 {
     int nalsize, size = pkt->data_size;
@@ -811,6 +867,7 @@ int main(int argc, char * const argv[])
   }
   
   ctx.codec_context = ctx.demuxer->GetCodecContext();
+  ctx.format_context = ctx.demuxer->GetFormatContext();
   if (!ctx.codec_context) {
     fprintf(stderr, "ERROR: Invalid FFmpegFileReader Codec Context\n");
     goto fail;
@@ -823,14 +880,23 @@ int main(int argc, char * const argv[])
   printf("video width(%d), height(%d), extradata_size(%d)\n",
     (int)ctx.sourceWidth, (int)ctx.sourceHeight, ctx.codec_context->extradata_size);
 
+  AVStream *pStream;
+  pStream = ctx.format_context->streams[ctx.demuxer->GetVideoIndex()];
   //ctx.vstream_info.video_pid = (unsigned short)ctx.codec_context->id;
-  if (ctx.codec_context->time_base.den) {
-    ctx.vstream_info.video_duration = ((float)ctx.codec_context->time_base.num / ctx.codec_context->time_base.den) * UNIT_FREQ;
+  if (pStream->time_base.den) {
+    ctx.vstream_info.start_time     = pStream->start_time * pStream->time_base.num * PTS_FREQ / pStream->time_base.den;
+    ctx.vstream_info.video_duration = ((float)pStream->time_base.num / pStream->time_base.den) * UNIT_FREQ;
+    ctx.vstream_info.video_pts      = ((float)pStream->time_base.num / pStream->time_base.den) * PTS_FREQ;
   }
   ctx.vstream_info.video_width  = ctx.codec_context->width;
   ctx.vstream_info.video_height = ctx.codec_context->height;
-  ctx.vstream_info.video_ratio  = (float)ctx.codec_context->sample_aspect_ratio.num / ctx.codec_context->sample_aspect_ratio.den;
-  //ctx.vstream_info.video_rate   = UNIT_FREQ * ctx.codec_context->r_frame_rate.den / ctx.codec_context->r_frame_rate.num;
+  ctx.vstream_info.video_ratio  = (float)pStream->sample_aspect_ratio.num / pStream->sample_aspect_ratio.den;
+  if (ctx.codec_context->time_base.den) {
+    ctx.vstream_info.video_codec_rate = (int64_t)UNIT_FREQ * ctx.codec_context->time_base.num / ctx.codec_context->time_base.den;
+  }
+  if (pStream->r_frame_rate.num) {
+    ctx.vstream_info.video_rate = (int64_t)UNIT_FREQ * pStream->r_frame_rate.den / pStream->r_frame_rate.num;
+  }
 
   printf("\n*********AMLOGIC CODEC PLAYER DEMO************\n\n");
 	osd_blank("/sys/class/graphics/fb0/blank", 1);
@@ -838,28 +904,25 @@ int main(int argc, char * const argv[])
 	//osd_blank("/sys/class/tsync/enable", 1);
   osd_blank("/sys/class/tsync/enable", 0);
 
-  ctx.vcodec.has_video = 1;
-  //ctx.vcodec.video_pid = 0x1022;
-
   switch(ctx.codec_context->codec_id)
   {
     case CODEC_ID_H264:
       printf("CODEC_ID_H264\n");
 
-      ctx.vcodec.video_type = VFORMAT_H264;
-      #define EXTERNAL_PTS (1)
-      #define SYNC_OUTSIDE (2)
-      ctx.vcodec.am_sysinfo.param = (void*)(EXTERNAL_PTS | SYNC_OUTSIDE);
-      //ctx.vcodec.am_sysinfo.param = (void*)(EXTERNAL_PTS);
-      ctx.vcodec.stream_type = STREAM_TYPE_ES_VIDEO;
-      ctx.vcodec.am_sysinfo.format = VIDEO_DEC_FORMAT_H264;
-      ctx.vcodec.am_sysinfo.rate   = 25;
-      ctx.vcodec.am_sysinfo.width  = ctx.sourceWidth;
-      ctx.vcodec.am_sysinfo.height = ctx.sourceHeight;
+      ctx.vcodec.has_video = 1;
       ctx.vcodec.has_audio = 0;
-      
-      ctx.am_pkt.hdr = (hdr_buf_t*)MALLOC(sizeof(hdr_buf_t));
-      ctx.am_pkt.hdr->data = (char *)MALLOC(HDR_BUF_SIZE);
+      ctx.stream_type = STREAM_ES;
+      //ctx.vcodec.video_pid = ctx.demuxer->GetVideoIndex();
+      ctx.vcodec.video_type = VFORMAT_H264;
+      ctx.vcodec.stream_type = STREAM_TYPE_ES_VIDEO;
+      //ctx.vcodec.noblock = !!p_para->buffering_enable;
+      ctx.vcodec.am_sysinfo.format = VIDEO_DEC_FORMAT_H264;
+      ctx.vcodec.am_sysinfo.width  = ctx.vstream_info.video_width;
+      ctx.vcodec.am_sysinfo.height = ctx.vstream_info.video_height;
+      ctx.vcodec.am_sysinfo.rate   = ctx.vstream_info.video_rate;
+      ctx.vcodec.am_sysinfo.ratio  = ctx.vstream_info.video_ratio;
+      ctx.vcodec.am_sysinfo.param = (void*)(EXTERNAL_PTS | SYNC_OUTSIDE);
+
     break;
     case CODEC_ID_MPEG4:
       printf("CODEC_ID_MPEG4\n");
@@ -895,18 +958,13 @@ int main(int argc, char * const argv[])
 	codec_set_cntl_avthresh(&ctx.vcodec, AV_SYNC_THRESH);
 	codec_set_cntl_syncthresh(&ctx.vcodec, ctx.vcodec.has_audio);
 
-
   {
     int frame_count, total = 0;
     int64_t bgn_us, end_us;
 
     ctx.am_pkt.codec = &ctx.vcodec;
-    if (ctx.codec_context->extradata_size) {
-      if ( *ctx.codec_context->extradata == 1 ) {
-        printf("using existing avcC atom data\n");
-        h264_write_header(&ctx, &ctx.am_pkt);
-      }
-    }
+
+    pre_header_feeding(&ctx, &ctx.am_pkt);
 
     ctx.demuxer->Read(ctx.am_pkt.avpkt);
     printf("byte_count(%d), dts(%llu), pts(%llu)\n",
@@ -915,6 +973,7 @@ int main(int argc, char * const argv[])
       fprintf(stderr, "ERROR: Zero bytes read from input\n");
       //goto fail;
     }
+    ctx.am_pkt.type = CODEC_VIDEO;
     ctx.am_pkt.data = ctx.am_pkt.avpkt->data;
     ctx.am_pkt.data_size = ctx.am_pkt.avpkt->size;
     ctx.am_pkt.avpkt_newflag = 1;
@@ -922,6 +981,9 @@ int main(int argc, char * const argv[])
 
     frame_count = 0;
     bool done = false;
+    struct buf_status vbuf;
+    struct vdec_status vdec;
+    float  vlevel;
     while (!g_signal_abort && !done && (frame_count < 5000)) {
       h264_update_frame_header(&ctx.am_pkt);
       
@@ -931,11 +993,15 @@ int main(int argc, char * const argv[])
 
       end_us = CurrentHostCounter() * 1000 / CurrentHostFrequency();
 
-      fprintf(stdout, "decode time(%llu) us\n", end_us-bgn_us);
       frame_count++;
-      //usleep(10000);
+      //fprintf(stdout, "decode time(%llu) us\n", end_us-bgn_us);
+      check_vcodec_state(&ctx.vcodec, &vdec, &vbuf);
+      vlevel = 100.0 * (float)vbuf.data_len / vbuf.size;
+      //log_print("buffering_states,vlevel=%d,vsize=%d,level=%f\n", vbuf.data_len, vbuf.size, vlevel);
+      usleep(vlevel * 5000);
 
       ctx.demuxer->Read(ctx.am_pkt.avpkt);
+      ctx.am_pkt.type = CODEC_VIDEO;
       ctx.am_pkt.data = ctx.am_pkt.avpkt->data;
       ctx.am_pkt.data_size = ctx.am_pkt.avpkt->size;
       ctx.am_pkt.avpkt_newflag = 1;
