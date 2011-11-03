@@ -278,6 +278,7 @@ bool CJpegIO::HWDecode(const unsigned char *pixels, unsigned int pitch, unsigned
         src += image_info->bytes_per_line;
         dst += pitch;
       }
+      rtn = true;
     }
     else if (format == XB_FMT_A8R8G8B8)
     {
@@ -296,6 +297,7 @@ bool CJpegIO::HWDecode(const unsigned char *pixels, unsigned int pitch, unsigned
           dst += pitch;
         }
       }
+      rtn = true;
     }
     else
     {
