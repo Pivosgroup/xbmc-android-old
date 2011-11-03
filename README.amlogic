@@ -45,7 +45,7 @@ Build xbmc depend libs
  setenv serverip 192.168.2.200
  setenv gatewayip 192.168.2.1
  setenv ipaddr 192.168.2.214
- setenv bootargs root=/dev/nfs nfsroot=192.168.2.200:/opt/aml-rootfs rw noinitrd init=/init ip=192.168.2.214:192.168.2.200:192.168.2.1:255.255.255.0:target:eth0:off console=ttyS0,115200 a9_clk=800M clk81=200000k
+ setenv bootargs root=/dev/nfs nfsroot=192.168.2.200:/opt/aml-rootfs rw noinitrd ip=192.168.2.214:192.168.2.200:192.168.2.1:255.255.255.0:target:eth0:off console=ttyS0,115200 a9_clk=800M clk81=200000k
  saveenv
 
 # Do a tftpboot from the server:
