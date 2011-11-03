@@ -1,4 +1,25 @@
-Change setup-sdk.sh to reflect your paths for BUILDROOT and TARBALLS;
+- Setup TFTP Server 
+sudo apt-get install tftpd-hpa
+check /etc/default/tftpd-hpa for TFTP_OPTIONS="-s" or TFTP_OPTIONS="--secure", add it if not
+sudo /etc/init.d/tftpd-hpa restart
+
+- Setup NFS Server
+sudo apt-get install nfs-kernel-server
+add to /etc/exports and change 192.168.2 to match your local net setup
+/opt/aml-rootfs 192.168.2.0/255.255.255.0(rw,sync,no_root_squash,no_all_squash,anonuid=0,anongid=0,no_subtree_check)
+sudo mkdir -p /opt/aml-rootfs
+sudo /etc/init.d/nfs-kernel-server restart
+
+# Checkout and build the buildroot rootfs.
+# The bootable rootfs is assumed to be going to /opt/aml-root.
+
+ git clone git@github.com:Pivosgroup/buildroot-linux.git
+ make amlogic_atv300-xbmc_defconfig
+ make
+ sudo cp output/images/uImage /var/lib/tftpboot/
+ sudo tar -C /opt/aml-rootfs -xf output/images/rootfs.tar.gz
+
+# Change setup-sdk.sh to reflect your paths for BUILDROOT and TARBALLS;
  cd tools/amlogic
  nano setup-sdk.sh 
  ./setup-sdk.sh
@@ -7,63 +28,77 @@ Change setup-sdk.sh to reflect your paths for BUILDROOT and TARBALLS;
 Build xbmc depend libs
  make -C tools/amlogic/depends
 
-
-Build XBMC
+# Build XBMC
  make
 
-
-Install XBMC (goes into /opt/xbmc-aml)
+# Install XBMC (goes into /opt/xbmc-aml)
  sudo make install
  
-Run XBMC on amlogic box
- insmod /lib/modules/mali.ko
- echo 1 > /sys/class/graphics/fb1/blank
- fbset -g 1280 720 1280 1440 32
- echo "nameserver 8.8.8.8" > /etc/resolv.conf
+# To boot the amlogic board:
+ attach usb/serial-ttl to pin white connector (pwr , tx, gnd, and rx)
+ picocom --baud=115200 /dev/ttyUSB0
+ power up and do a few returns to halt the boot.
+
+# Change the boot vars to (change IPs to reflect your setup),
+# You only need to do this once as the setting will get saved:
+ setenv machid 2956
+ setenv serverip 192.168.2.200
+ setenv gatewayip 192.168.2.1
+ setenv ipaddr 192.168.2.214
+ setenv bootargs root=/dev/nfs nfsroot=192.168.2.200:/opt/aml-rootfs rw noinitrd init=/init ip=192.168.2.214:192.168.2.200:192.168.2.1:255.255.255.0:target:eth0:off console=ttyS0,115200 a9_clk=800M clk81=200000k
+ saveenv
+
+# Do a tftpboot from the server:
+ tftpboot 0x82000000 uImage;bootm 0x82000000
+
+# To restore android kernel boot:
+  setenv machid 2957
+  saveenv
+
+# Run XBMC on amlogic box
+ mkdir -p /opt/xbmc-aml
  mount -t nfs -o nolock,rw 192.168.2.200:/opt/xbmc-aml /opt/xbmc-aml
  mount -t usbfs none /proc/bus/usb
  export XBMC_HOME=/opt/xbmc-aml/share/xbmc
  export PATH=$PATH:/opt/xbmc-aml/bin
  export LD_LIBRARY_PATH=/opt/xbmc-aml/lib:/usr/local/lib:/usr/lib:/lib
  ln -sf /opt/xbmc-aml/lib/mysql/libmysqlclient.so.16 /opt/xbmc-aml/lib/libmysqlclient.so.16
- amremote_config /etc/irmap-amlogic
+ amremote_config /etc/xbmc/remote.conf
 
  /opt/xbmc-aml/lib/xbmc/xbmc.bin
 
 
-cat /.xbmc/temp/xbmc.log
+ cat /.xbmc/temp/xbmc.log
+
+# Run a swapfile on SDCard:
+ mkdir -p /home/amlogic/tmp
+ mount /dev/sda1 /home/amlogic/tmp
+ dd if=/dev/zero of=/home/amlogic/tmp/swapfile1 bs=1024 count=524288
+ mkswap /home/amlogic/tmp/swapfile1
+ swapon /home/amlogic/tmp/swapfile1
+ free
 
 
+# How to boot kernel/rootfs from SDCard:
+ http://openlinux.amlogic.com/wiki/index.php/Arm/Platform_Info/Information_for_8726M/Burn_system_for_8726M_Howto
 
-Run a swapfile on SDCard:
-mkdir -p /home/amlogic/tmp
-mount /dev/sda1 /home/amlogic/tmp
-dd if=/dev/zero of=/home/amlogic/tmp/swapfile1 bs=1024 count=524288
-mkswap /home/amlogic/tmp/swapfile1
-swapon /home/amlogic/tmp/swapfile1
-free
+ mkdir fat32
+ sudo mount /dev/sdb1 fat32
+ cp /var/lib/tftpboot/uImage fat32/
+ sudo umount fat32
+ rmdir fat32
 
+ mkdir ext2
+ sudo mkfs.ext2 /dev/sdb2
+ sudo mount /dev/sdb2 ext2
+ sudo rsync -a --exclude .xbmc /opt/aml-rootfs/ ext2
+ sudo rsync -a --exclude-from=tools/amlogic/packaging/excludes.txt /opt/xbmc-aml/ ext2/opt/xbmc-aml
+ sudo cp -f tools/amlogic/packaging/etc/init.d/S100xbmc ext2/etc/init.d/S100xbmc
+ sudo cp -f tools/amlogic/packaging/etc/network/interfaces ext2/etc/network/interfaces
+ sudo umount ext2
+ rmdir ext2
 
-How to boot kernel/rootfs from SDCard:
-http://openlinux.amlogic.com/wiki/index.php/Arm/Platform_Info/Information_for_8726M/Burn_system_for_8726M_Howto
-
-mkdir fat32
-sudo mount /dev/sdb1 fat32
-cp /var/lib/tftpboot/uImage fat32/
-sudo umount fat32
-rmdir fat32
-
-mkdir ext2
-sudo mkfs.ext2 /dev/sdb2
-sudo mount /dev/sdb2 ext2
-sudo rsync -a --exclude .xbmc /opt/aml-rootfs/ ext2
-sudo rsync -a --exclude-from=tools/amlogic/packaging/excludes.txt /opt/xbmc-aml/ ext2/opt/xbmc-aml
-sudo cp -f tools/amlogic/packaging/etc/init.d/S100xbmc ext2/etc/init.d/S100xbmc
-sudo cp -f tools/amlogic/packaging/etc/network/interfaces ext2/etc/network/interfaces
-sudo umount ext2
-rmdir ext2
-
-setenv bootcmd 'mmc init;mmcinfo;fatload mmc 0:1 82000000 uImage;bootm 82000000;'
-setenv bootargs 'console=tty0 console=ttyS0,115200n8 root=/dev/cardblksd2 rw rootfstype=ext2 init=/init rootwait'
-saveenv
-boot
+ setenv bootcmd 'mmc init;mmcinfo;fatload mmc 0:1 82000000 uImage;bootm 82000000;'
+ setenv bootargs 'console=tty0 console=ttyS0,115200n8 root=/dev/cardblksd2 rw rootfstype=ext2 init=/init rootwait'
+ saveenv
+ boot
