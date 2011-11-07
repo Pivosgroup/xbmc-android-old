@@ -114,112 +114,37 @@ typedef struct {
     unsigned int    video_codec_rate;
     vdec_type_t     video_codec_type;
     int             vdec_buf_len;
-    int             extradata_size;
-    uint8_t         *extradata;
 } v_stream_info_t;
 
-typedef struct {
-    int             has_audio;
-    int             resume_audio;
-    aformat_t       audio_format;
-    signed short    audio_index;
-    unsigned short  audio_pid;
-    int             audio_channel;
-    int             audio_samplerate;
-    int             check_first_pts;
-    int64_t         start_time;
-    int             adec_buf_len;
-    float           audio_duration;
-    int             extradata_size;
-    uint8_t         *extradata;
-} a_stream_info_t;
-
 typedef  struct {
-    unsigned int search_flag: 1;
     unsigned int read_end_flag: 1;
-    unsigned int video_end_flag: 1;
-    unsigned int video_low_buffer: 1;
-    unsigned int audio_end_flag: 1;
-    unsigned int audio_low_buffer: 1;
     unsigned int end_flag: 1;
-    unsigned int pts_valid: 1;
-    unsigned int sync_flag: 1;
     unsigned int reset_flag: 1;
-    unsigned int no_audio_flag: 1;
-    unsigned int no_video_flag: 1;
-    unsigned int has_sub_flag: 1;
-    unsigned int loop_flag: 1;
-    unsigned int black_out: 1;
-    unsigned int raw_mode: 1;
-    unsigned int pause_flag: 1;
-    unsigned int fast_forward: 1;
-    unsigned int fast_backward: 1;
-    unsigned int init_ff_fr: 1;
-    unsigned int audio_switch_flag: 1;
-    unsigned int audio_mute: 1;   
-    unsigned int avsync_enable:1;
-    #ifdef DEBUG_VARIABLE_DUR
-    unsigned int info_variable:1;
-    #endif
-    unsigned int audio_switch_vmatch:1;
-    unsigned int audio_switch_smatch:1;
-    unsigned int switch_audio_id;
-    unsigned int switch_sub_id;
-    unsigned int is_playlist;	
     int time_point;
-    int f_step;
-    int read_max_retry_cnt;
-    int audio_ready;		
     int check_lowlevel_eagain_cnt;
 } p_ctrl_info_t;
 
 typedef struct player_info
 {
-	char *name;
-	//player_status last_sta;
-	//player_status status;		   /*stop,pause	*/
-	int full_time;	   /*Seconds	*/
-	int current_time;  /*Seconds	*/
-	int current_ms;	/*ms*/
-	int last_time;		
-	int error_no;  
 	int start_time;
 	int pts_video;
-	//int pts_pcrscr;
-	int current_pts;
-	long curtime_old_time;    
-	unsigned int video_error_cnt;
-	unsigned int audio_error_cnt;
-	float audio_bufferlevel; // relative value
-	float video_bufferlevel; // relative value
-	int64_t	bufed_pos;
-	int	bufed_time;/* Second*/
 } player_info_t;
 
 typedef struct
 {
-  int               sourceWidth;
-  int               sourceHeight;
   FFmpegFileReader  *demuxer;
   AVCodecContext    *codec_context;
   AVFormatContext   *format_context;
-  codec_para_t      acodec;
   codec_para_t      vcodec;
 
-  int               player_id;
   player_info_t     state;
   p_ctrl_info_t     playctrl_info;
   pstream_type      stream_type;
-  a_stream_info_t   astream_info;
   v_stream_info_t   vstream_info;
   am_packet_t       am_pkt;
 
   read_write_size   read_size;
   read_write_size   write_size;
-  int               buffering_enable;
-  float             buffering_threshhold_min;
-  float             buffering_threshhold_middle;
-  float             buffering_threshhold_max;
 } AppContext;
 
 /* g_signal_abort is set to 1 in term/int signal handler */
@@ -267,23 +192,11 @@ int osd_blank(const char *path, int cmd)
 	return -1;
 }
 
-int  player_thread_wait(AppContext *player, int microseconds)
-{
-  usleep(microseconds);
-  
-  return 0;
-}
-
 static void player_para_init(AppContext *para)
 {
     para->state.start_time = -1;
     para->vstream_info.video_index = -1;
     para->vstream_info.start_time = -1;
-    para->astream_info.audio_index = -1;
-    para->astream_info.start_time = -1;
-    //para->sstream_info.sub_index = -1;
-    //para->discontinue_point = 0;
-    //para->discontinue_flag = 0;
 }
 
 /*************************************************************************/
@@ -303,7 +216,7 @@ void am_packet_init(am_packet_t *pkt)
 /*************************************************************************/
 static int check_vcodec_state(codec_para_t *codec, struct vdec_status *dec, struct buf_status *buf)
 {
-    int ret = 0;
+    int ret;
 
     ret = codec_get_vbuf_state(codec,  buf);
     if (ret != 0) {
@@ -327,11 +240,7 @@ int check_in_pts(AppContext *para, am_packet_t *pkt)
     float time_base_ratio = 0;
     long long start_time = 0;
 
-    if (pkt->type == CODEC_AUDIO) {
-        time_base_ratio = para->astream_info.audio_duration;
-        start_time = para->astream_info.start_time;
-        last_duration = last_a_duration;
-    } else if (pkt->type == CODEC_VIDEO) {
+    if (pkt->type == CODEC_VIDEO) {
         time_base_ratio = para->vstream_info.video_pts;
         start_time = para->vstream_info.start_time;
         last_duration = last_v_duration;
@@ -345,7 +254,7 @@ int check_in_pts(AppContext *para, am_packet_t *pkt)
             }
 
             if (codec_checkin_pts(pkt->codec, pts) != 0) {
-                log_error("ERROR pid[%d]: check in pts error!\n", para->player_id);
+                log_error("ERROR check in pts error!\n");
                 return PLAYER_PTS_ERROR;
             }
             //log_print("[check_in_pts:%d]type=%d pkt->pts=%llx pts=%llx start_time=%llx \n",__LINE__,pkt->type,pkt->avpkt->pts,pts, start_time);
@@ -355,7 +264,7 @@ int check_in_pts(AppContext *para, am_packet_t *pkt)
             //log_print("[check_in_pts:%d]type=%d pkt->dts=%llx pts=%llx time_base_ratio=%.2f last_duration=%d\n",__LINE__,pkt->type,pkt->avpkt->dts,pts,time_base_ratio,last_duration);
 
             if (codec_checkin_pts(pkt->codec, pts) != 0) {
-                log_error("ERROR pid[%d]: check in dts error!\n", para->player_id);
+                log_error("ERROR check in dts error!\n");
                 return PLAYER_PTS_ERROR;
             }
 
@@ -365,40 +274,16 @@ int check_in_pts(AppContext *para, am_packet_t *pkt)
                 last_v_duration = pkt->avpkt->duration ? pkt->avpkt->duration : 1;
             }
         } else {
-            if (!para->astream_info.check_first_pts && pkt->type == CODEC_AUDIO) {
-                if (codec_checkin_pts(pkt->codec, 0) != 0) {
-                    log_print("ERROR pid[%d]: check in 0 to audio pts error!\n", para->player_id);
-                    return PLAYER_PTS_ERROR;
-                }
-            }
             if (!para->vstream_info.check_first_pts && pkt->type == CODEC_VIDEO) {
                 if (codec_checkin_pts(pkt->codec, 0) != 0) {
-                    log_print("ERROR pid[%d]: check in 0 to audio pts error!\n", para->player_id);
+                    log_print("ERROR check in 0 to audio pts error!\n");
                     return PLAYER_PTS_ERROR;
                 }
             }
         }
-        if (pkt->type == CODEC_AUDIO && !para->astream_info.check_first_pts) {
-            para->astream_info.check_first_pts = 1;
-        } else if (pkt->type == CODEC_VIDEO && !para->vstream_info.check_first_pts) {
+        if (pkt->type == CODEC_VIDEO && !para->vstream_info.check_first_pts) {
             para->vstream_info.check_first_pts = 1;
         }
-    } else if (para->stream_type == STREAM_AUDIO) {
-        /*
-        if (!para->astream_info.check_first_pts) {
-            if (!url_support_time_seek(para->pFormatCtx->pb) &&
-                (para->playctrl_info.time_point == -1)) {
-
-                para->playctrl_info.time_point = 0;
-            }
-            pts = para->playctrl_info.time_point * PTS_FREQ;
-            if (codec_checkin_pts(pkt->codec, pts) != 0) {
-                log_print("ERROR pid[%d]: check in 0 to audio pts error!\n", para->player_id);
-                return PLAYER_PTS_ERROR;
-            }
-            para->astream_info.check_first_pts = 1;
-        }
-        */
     }
     return PLAYER_SUCCESS;
 }
@@ -406,14 +291,8 @@ int check_in_pts(AppContext *para, am_packet_t *pkt)
 static int check_write_finish(AppContext *para, am_packet_t *pkt)
 {
     if (para->playctrl_info.read_end_flag) {
-        if (para->playctrl_info.raw_mode
-            && (para->write_size.total_bytes == para->read_size.total_bytes)) {
-            return PLAYER_WR_FINISH;
-        }
-
-        if (!para->playctrl_info.raw_mode
-            && (para->write_size.vpkt_num == para->read_size.vpkt_num)
-            && (para->write_size.apkt_num == para->read_size.apkt_num)) {
+        if ((para->write_size.vpkt_num == para->read_size.vpkt_num) &&
+            (para->write_size.apkt_num == para->read_size.apkt_num)) {
             return PLAYER_WR_FINISH;
         }
     }
@@ -439,16 +318,6 @@ static int write_header(AppContext *para, am_packet_t *pkt)
                     continue;
                 }
             } else {
-#if DUMP_WRITE
-                int size;
-                //if(fd > 0 && pkt->type == CODEC_VIDEO)
-                if (fdw > 0) {
-                    size = write(fdw, pkt->hdr->data + len, write_bytes);
-                    if (size != write_bytes) {
-                        log_print("dump data write failed!size=%d bytes=%d\n", size, write_bytes);
-                    }
-                }
-#endif
                 len += write_bytes;
                 if (len == pkt->hdr->size) {
                     break;
@@ -461,21 +330,13 @@ static int write_header(AppContext *para, am_packet_t *pkt)
 
 int check_avbuffer_enough(AppContext *para, am_packet_t *pkt)
 {
-  return 1;
+    return 1;
 }
 int write_av_packet(AppContext *para, am_packet_t *pkt)
 {
     int write_bytes = 0, len = 0, ret;
     unsigned char *buf;
     int size ;
-#if DUMP_WRITE
-    if (fdw == -1) {
-        fdw = open("./dump/dump_write.dat", O_CREAT | O_RDWR);
-        if (fdw < 0) {
-            log_print("creat dump file failed!fd=%d\n", fdw);
-        }
-    }
-#endif
 
     if (pkt->avpkt_newflag) {
         if (pkt->type != CODEC_SUBTITLE) {
@@ -499,10 +360,8 @@ int write_av_packet(AppContext *para, am_packet_t *pkt)
     buf = pkt->data;
     size = pkt->data_size ;
     if (size == 0 && pkt->avpkt_isvalid) {
-        if ((pkt->type == CODEC_VIDEO) && (!para->playctrl_info.raw_mode)) {
-            para->write_size.vpkt_num ++;
-        } else if ((pkt->type == CODEC_AUDIO) && (!para->playctrl_info.raw_mode)) {
-            para->write_size.apkt_num ++;
+        if ((pkt->type == CODEC_VIDEO)) {
+            para->write_size.vpkt_num++;
         }
         if (pkt->avpkt) {
             av_free_packet(pkt->avpkt);
@@ -518,56 +377,41 @@ int write_av_packet(AppContext *para, am_packet_t *pkt)
                 return PLAYER_WR_FAILED;
             } else {
                 // EAGAIN to see if buffer full or write time out too much		
-				if(check_avbuffer_enough(para, pkt)){
-					++ para->playctrl_info.check_lowlevel_eagain_cnt;
-				}else{
-					para->playctrl_info.check_lowlevel_eagain_cnt = 0;
-				}
-				
-				if (para->playctrl_info.check_lowlevel_eagain_cnt > 50) {
-            // reset decoder
-            para->playctrl_info.check_lowlevel_eagain_cnt = 0;
-            para->playctrl_info.reset_flag = 1;
-            para->playctrl_info.end_flag = 1;
-            if (para->state.start_time != -1) {
-                para->playctrl_info.time_point = (para->state.pts_video - para->state.start_time)/ PTS_FREQ;
-            } else {
-                para->playctrl_info.time_point = para->state.pts_video/ PTS_FREQ;
-            }
-            
-            log_print("$$$$$$[type:%d] write blocked, need reset decoder!$$$$$$\n", pkt->type);
-        }				
-        pkt->data += len;
-        pkt->data_size -= len;
-        player_thread_wait(para, RW_WAIT_TIME);
-				if(para->playctrl_info.check_lowlevel_eagain_cnt > 0){
-                	log_print("[%s]eagain:data_size=%d type=%d rsize=%lld wsize=%lld cnt=%d\n", \
-								__FUNCTION__, pkt->data_size, pkt->type, para->read_size.total_bytes, \
-								para->write_size.total_bytes, para->playctrl_info.check_lowlevel_eagain_cnt);
-				}
+                if (check_avbuffer_enough(para, pkt)) {
+                  para->playctrl_info.check_lowlevel_eagain_cnt++;
+                } else {
+                  para->playctrl_info.check_lowlevel_eagain_cnt = 0;
+                }
+                
+                if (para->playctrl_info.check_lowlevel_eagain_cnt > 50) {
+                    // reset decoder
+                    para->playctrl_info.check_lowlevel_eagain_cnt = 0;
+                    para->playctrl_info.reset_flag = 1;
+                    para->playctrl_info.end_flag = 1;
+                    if (para->state.start_time != -1) {
+                        para->playctrl_info.time_point = (para->state.pts_video - para->state.start_time)/ PTS_FREQ;
+                    } else {
+                        para->playctrl_info.time_point = para->state.pts_video/ PTS_FREQ;
+                    }
+                    
+                    log_print("$$$$$$[type:%d] write blocked, need reset decoder!$$$$$$\n", pkt->type);
+                }				
+                pkt->data += len;
+                pkt->data_size -= len;
+                usleep(RW_WAIT_TIME);
+                if (para->playctrl_info.check_lowlevel_eagain_cnt > 0) {
+                    log_print("[%s]eagain:data_size=%d type=%d rsize=%lld wsize=%lld cnt=%d\n", \
+                        __FUNCTION__, pkt->data_size, pkt->type, para->read_size.total_bytes, \
+                        para->write_size.total_bytes, para->playctrl_info.check_lowlevel_eagain_cnt);
+                }
                 return PLAYER_SUCCESS;
             }
         } else {
-#if DUMP_WRITE
-            int dsize;
-            //if(fd > 0 && debug && pkt->type == CODEC_VIDEO)
-            if (fdw > 0) {
-                dsize = write(fdw, buf, write_bytes);
-                if (dsize != write_bytes) {
-                    log_print("dump data write failed!size=%d len=%d\n", size, len);
-                }
-            }
-#endif
             para->playctrl_info.check_lowlevel_eagain_cnt = 0;
             len += write_bytes;
             if (len == pkt->data_size) {
-                if ((pkt->type == CODEC_VIDEO) && (!para->playctrl_info.raw_mode)) {
-                    para->write_size.vpkt_num ++;
-                } else if ((pkt->type == CODEC_AUDIO) && (!para->playctrl_info.raw_mode)) {
-                    para->write_size.apkt_num ++;
-                }
-                if (para->playctrl_info.raw_mode) {
-                    para->write_size.total_bytes += len;
+                if ((pkt->type == CODEC_VIDEO)) {
+                    para->write_size.vpkt_num++;
                 }
                 if (pkt->avpkt) {
                     av_free_packet(pkt->avpkt);
@@ -586,11 +430,6 @@ int write_av_packet(AppContext *para, am_packet_t *pkt)
         }
     }
     if (check_write_finish(para, pkt) == PLAYER_WR_FINISH) {
-#if DUMP_WRITE
-        if (fdw > 0) {
-            close(fdw);
-        }
-#endif
         return PLAYER_WR_FINISH;
     }
     return PLAYER_SUCCESS;
@@ -875,10 +714,8 @@ int main(int argc, char * const argv[])
 
   dump_extradata(&ctx);
 
-  ctx.sourceWidth = ctx.codec_context->width;
-  ctx.sourceHeight = ctx.codec_context->height;
   printf("video width(%d), height(%d), extradata_size(%d)\n",
-    (int)ctx.sourceWidth, (int)ctx.sourceHeight, ctx.codec_context->extradata_size);
+    (int)ctx.codec_context->width, (int)ctx.codec_context->height, ctx.codec_context->extradata_size);
 
   AVStream *pStream;
   pStream = ctx.format_context->streams[ctx.demuxer->GetVideoIndex()];
