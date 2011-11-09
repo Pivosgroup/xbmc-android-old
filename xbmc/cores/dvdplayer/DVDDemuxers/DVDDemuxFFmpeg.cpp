@@ -1023,6 +1023,9 @@ void CDVDDemuxFFmpeg::AddStream(int iId)
         st->iLevel = pStream->codec->level;
         st->iProfile = pStream->codec->profile;
 
+        if (pStream->time_base.den && pStream->time_base.num)
+          st->fTimebase = av_q2d(pStream->time_base);
+
         if ( m_pInput->IsStreamType(DVDSTREAM_TYPE_DVD) )
         {
           if (pStream->codec->codec_id == CODEC_ID_PROBE)

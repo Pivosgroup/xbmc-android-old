@@ -59,6 +59,7 @@ void CDVDStreamInfo::Clear()
   level    = 0;
   profile  = 0;
   ptsinvalid = false;
+  timebase = 0.0;
 
   channels   = 0;
   samplerate = 0;
@@ -94,6 +95,7 @@ bool CDVDStreamInfo::Equal(const CDVDStreamInfo& right, bool withextradata)
   ||  level    != right.level
   ||  profile  != right.profile
   ||  ptsinvalid != right.ptsinvalid
+  ||  timebase != right.timebase
   ||  vfr      != right.vfr) return false;
 
   // AUDIO
@@ -148,6 +150,7 @@ void CDVDStreamInfo::Assign(const CDVDStreamInfo& right, bool withextradata)
   level    = right.level;
   profile  = right.profile;
   ptsinvalid = right.ptsinvalid;
+  timebase = right.timebase;
 
   // AUDIO
   channels      = right.channels;
@@ -196,6 +199,7 @@ void CDVDStreamInfo::Assign(const CDemuxStream& right, bool withextradata)
     level     = stream->iLevel;
     profile   = stream->iProfile;
     ptsinvalid = stream->bPTSInvalid;
+    timebase  = stream->fTimebase;
   }
   else if(  right.type == STREAM_SUBTITLE )
   {

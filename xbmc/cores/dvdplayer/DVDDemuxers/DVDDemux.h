@@ -156,6 +156,7 @@ public:
     iLevel = 0;
     iProfile = 0;
     bPTSInvalid = false;
+    fTimebase = 0.0;
     type = STREAM_VIDEO;
   }
 
@@ -169,7 +170,7 @@ public:
   int iLevel; // encoder level of the stream reported by the decoder. used to qualify hw decoders.
   int iProfile; // encoder profile of the stream reported by the decoder. used to qualify hw decoders.
   bool bPTSInvalid; // pts cannot be trusted (avi's).
-  
+  float fTimebase;
 };
 
 class CDemuxStreamAudio : public CDemuxStream
