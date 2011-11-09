@@ -735,6 +735,12 @@ int main(int argc, char * const argv[])
     ctx.vstream_info.video_rate = (int64_t)UNIT_FREQ * pStream->r_frame_rate.den / pStream->r_frame_rate.num;
   }
 
+
+  log_print("time_base.num(%d), pStream->time_base.den(%d)\n",
+    pStream->time_base.num, pStream->time_base.den);
+    ctx.vstream_info.video_duration = ((float)pStream->time_base.num / pStream->time_base.den) * UNIT_FREQ;
+    ctx.vstream_info.video_pts      = ((float)pStream->time_base.num / pStream->time_base.den) * PTS_FREQ;
+
   printf("\n*********AMLOGIC CODEC PLAYER DEMO************\n\n");
 	osd_blank("/sys/class/graphics/fb0/blank", 1);
 	osd_blank("/sys/class/graphics/fb1/blank", 1);
@@ -825,6 +831,9 @@ int main(int argc, char * const argv[])
       h264_update_frame_header(&ctx.am_pkt);
       
       bgn_us = CurrentHostCounter() * 1000 / CurrentHostFrequency();
+
+      log_print("avpts(%lld), avdts(%lld)\n",
+        ctx.am_pkt.avpkt->pts, ctx.am_pkt.avpkt->dts);
 
       ret = write_av_packet(&ctx, &ctx.am_pkt);
 
