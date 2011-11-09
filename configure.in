@@ -505,6 +505,7 @@ case $host in
      AC_DEFINE(HAS_EGLGLES, [1], [Define if supporting EGL based GLES Framebuffer])
      CFLAGS="$CFLAGS -Wno-psabi -Wa,-mno-warn-deprecated"
      CXXFLAGS="$CXXFLAGS -Wno-psabi -Wa,-mno-warn-deprecated"
+     AC_CHECK_LIB([amcodec], [main],, AC_MSG_ERROR($missing_library))
      #AC_CHECK_LIB([amljpeg], [amljpeg_init],, AC_MSG_ERROR($missing_library))
      ;;
   arm*-*-linux-gnu*)
