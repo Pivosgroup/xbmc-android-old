@@ -37,6 +37,9 @@
 #if defined(HAVE_LIBCRYSTALHD)
 #include "Video/DVDVideoCodecCrystalHD.h"
 #endif
+#if defined(TARGET_AMLOGIC)
+#include "Video/DVDVideoCodecAmlogic.h"
+#endif
 #include "Audio/DVDAudioCodecFFmpeg.h"
 #include "Audio/DVDAudioCodecLibMad.h"
 #include "Audio/DVDAudioCodecPcm.h"
@@ -142,6 +145,11 @@ CDVDVideoCodec* CDVDFactoryCodec::CreateVideoCodec(CDVDStreamInfo &hint, unsigne
 #else
   hwSupport += "CrystalHD:no ";
 #endif
+#if defined(TARGET_AMLOGIC)
+  hwSupport += "Amlogic:yes ";
+#else
+  hwSupport += "Amlogic:no ";
+#endif
 #if defined(HAVE_LIBOPENMAX) && defined(_LINUX)
   hwSupport += "OpenMax:yes ";
 #elif defined(_LINUX)
@@ -221,6 +229,28 @@ CDVDVideoCodec* CDVDFactoryCodec::CreateVideoCodec(CDVDStreamInfo &hint, unsigne
             break;
           CLog::Log(LOGINFO, "Trying Broadcom Crystal HD Decoder...");
           if ( (pCodec = OpenCodec(new CDVDVideoCodecCrystalHD(), hint, options)) ) return pCodec;
+        break;
+        default:
+        break;
+      }
+    }
+  }
+#endif
+
+#if defined(TARGET_AMLOGIC)
+  //if (!hint.software && g_guiSettings.GetBool("videoplayer.usevideotoolbox"))
+  if (!hint.software && 1)
+  {
+    //if (g_sysinfo.HasVideoToolBoxDecoder())
+    if (1)
+    {
+      switch(hint.codec)
+      {
+        case CODEC_ID_H264:
+          if (hint.codec == CODEC_ID_H264 && hint.ptsinvalid)
+            break;
+          CLog::Log(LOGINFO, "Amlogic Video Decoder...");
+          if ( (pCodec = OpenCodec(new CDVDVideoCodecAmlogic(), hint, options)) ) return pCodec;
         break;
         default:
         break;
