@@ -743,22 +743,15 @@ bool CAmlogic::OpenDecoder(CDVDStreamInfo &hints)
 	}
 	printf("video codec ok!\n");
 
-
-	ret = codec_init_cntl(&am_private->vcodec);
-	if( ret != CODEC_ERROR_NONE )
-	{
-		printf("codec_init_cntl error\n");
-		return false;
-	}
-
 	codec_set_cntl_avthresh(&am_private->vcodec, AV_SYNC_THRESH);
-	//codec_set_cntl_syncthresh(&am_private->vcodec, am_private->vcodec.has_audio);
+	codec_set_cntl_syncthresh(&am_private->vcodec, am_private->vcodec.has_audio);
 
   //set_black_policy(0);
   //player_video_alpha_en(true);
   //player_video_overlay_en(true);
-  set_sysfs_int("/sys/class/tsync/enable", 0);
-  
+  //set_sysfs_int("/sys/class/tsync/enable", 0);
+  codec_set_syncenable(&am_private->vcodec, 0);
+
   am_private->am_pkt.codec = &am_private->vcodec;
   pre_header_feeding(am_private, &am_private->am_pkt);
   m_pts = 0;
@@ -772,12 +765,15 @@ void CAmlogic::CloseDecoder(void)
   //player_video_alpha_en(false);
   //player_video_overlay_en(false);
 
-	codec_close_cntl(&am_private->vcodec);
-	codec_close(&am_private->vcodec);
+  codec_close(&am_private->vcodec);
 }
 
 void CAmlogic::Reset(void)
 {
+  // close and re-init the decoder, also handle any extradata prefeed
+  codec_close(&am_private->vcodec);
+  int ret = codec_init(&am_private->vcodec);
+  pre_header_feeding(am_private, &am_private->am_pkt);
 }
 
 int CAmlogic::Decode(unsigned char *pData, size_t size, double dts, double pts)
@@ -791,7 +787,7 @@ int CAmlogic::Decode(unsigned char *pData, size_t size, double dts, double pts)
     am_private->am_pkt.avpts = 0.5 + (pts * PTS_FREQ / (am_private->time_base_ratio * DVD_TIME_BASE));
     am_private->am_pkt.avdts = 0.5 + (dts * PTS_FREQ / (am_private->time_base_ratio * DVD_TIME_BASE));
 
-    //CLog::Log(LOGDEBUG, "pts(%f), dts(%f), avpts(%lld), avdts(%lld)",
+    //printf("pts(%f), dts(%f), avpts(%lld), avdts(%lld)\n",
     //  pts, dts, am_private->am_pkt.avpts, am_private->am_pkt.avdts);
 
     h264_update_frame_header(&am_private->am_pkt);
@@ -801,12 +797,10 @@ int CAmlogic::Decode(unsigned char *pData, size_t size, double dts, double pts)
     struct vdec_status vdec;
     check_vcodec_state(&am_private->vcodec, &vdec, &vbuf);
     float vlevel = 100.0 * (float)vbuf.data_len / vbuf.size;
-    usleep(vlevel * 5000);
-
-    //CLog::Log(LOGDEBUG, "buffering_states,vlevel=%d,vsize=%d,level=%f",
-    //  vbuf.data_len, vbuf.size, vlevel);
+    usleep(1000);
+    //printf("buffering_states,vlevel=%d,vsize=%d,level=%f\n", vbuf.data_len, vbuf.size, vlevel);
   }
-  
+
   int cur_pts = codec_get_vpts(&am_private->vcodec) & ~0x2a000000;
   if (cur_pts != m_pts)
   {
@@ -827,12 +821,9 @@ bool CAmlogic::GetPicture(DVDVideoPicture *pDvdVideoPicture)
   pDvdVideoPicture->pts = pts * (double)DVD_TIME_BASE * (am_private->time_base_ratio / (double)PTS_FREQ);
   pDvdVideoPicture->iDuration = (DVD_TIME_BASE / am_private->time_base_ratio);
   
-  //printf("m_pts(%lld), pts(%f), pDvdVideoPicture->pts(%f), pDvdVideoPicture->iDuration(%f)\n",
+  //printf("CAmlogic::GetPicture m_pts(%lld), pts(%f), pDvdVideoPicture->pts(%f), pDvdVideoPicture->iDuration(%f)\n",
   //  m_pts, pts, pDvdVideoPicture->pts, pDvdVideoPicture->iDuration);
 
-  //pDvdVideoPicture->dts = DVD_NOPTS_VALUE;
-  //pDvdVideoPicture->pts = DVD_NOPTS_VALUE;
-  pDvdVideoPicture->iDuration = (DVD_TIME_BASE / (30.0 * 1000.0/1001.0));
   pDvdVideoPicture->iFlags = DVP_FLAG_ALLOCATED;
   pDvdVideoPicture->format = DVDVideoPicture::FMT_AMLREF;
 
@@ -841,7 +832,7 @@ bool CAmlogic::GetPicture(DVDVideoPicture *pDvdVideoPicture)
 
 void CAmlogic::SetDropState(bool bDrop)
 {
-  //printf("CAmlogic::SetDropState(%d)\n", bDrop);
+  printf("CAmlogic::SetDropState(%d)\n", bDrop);
 }
 
 #endif
