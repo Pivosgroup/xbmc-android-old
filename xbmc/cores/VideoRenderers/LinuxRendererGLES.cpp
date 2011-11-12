@@ -403,7 +403,7 @@ void CLinuxRendererGLES::RenderUpdate(bool clear, DWORD flags, DWORD alpha)
     // graphics plane that is under the gles layer.
     // Clear a hole where video would appear so we do not see
     // background images that have already been rendered. 
-    g_graphicsContext.SetScissors(m_destRect);
+    //g_graphicsContext.SetScissors(m_destRect);
 
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
