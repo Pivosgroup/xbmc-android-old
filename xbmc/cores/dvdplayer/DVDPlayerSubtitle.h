@@ -47,7 +47,7 @@ public:
 
   void UpdateOverlayInfo(CDVDInputStreamNavigator* pStream, int iAction) { m_pOverlayContainer->UpdateOverlayInfo(pStream, &m_dvdspus, iAction); }
 
-  bool AcceptsData();
+  bool IsFull();
   void SendMessage(CDVDMsg* pMsg);
   bool OpenStream(CDVDStreamInfo &hints, std::string& filename);
   void CloseStream(bool flush);

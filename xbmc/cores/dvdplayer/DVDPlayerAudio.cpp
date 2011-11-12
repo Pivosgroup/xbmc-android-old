@@ -862,18 +862,6 @@ void CDVDPlayerAudio::Flush()
   m_messageQueue.Put( new CDVDMsg(CDVDMsg::GENERAL_FLUSH), 1);
 }
 
-void CDVDPlayerAudio::WaitForBuffers()
-{
-  // make sure there are no more packets available
-  m_messageQueue.WaitUntilEmpty();
-
-  // make sure almost all has been rendered
-  // leave 500ms to avound buffer underruns
-  double delay = m_dvdAudio.GetCacheTime();
-  if(delay > 0.5)
-    Sleep((int)(1000 * (delay - 0.5)));
-}
-
 bool CDVDPlayerAudio::SwitchCodecIfNeeded()
 {
   // check if passthrough is disabled

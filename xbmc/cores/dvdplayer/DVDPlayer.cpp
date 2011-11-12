@@ -744,7 +744,7 @@ bool CDVDPlayer::ReadPacket(DemuxPacket*& packet, CDemuxStream*& stream)
 {
 
   // check if we should read from subtitle demuxer
-  if(m_dvdPlayerSubtitle.AcceptsData() && m_pSubtitleDemuxer )
+  if(!m_dvdPlayerSubtitle.IsFull() && m_pSubtitleDemuxer )
   {
     if(m_pSubtitleDemuxer)
       packet = m_pSubtitleDemuxer->Read();
@@ -1050,8 +1050,8 @@ void CDVDPlayer::Process()
     UpdateApplication(1000);
 
     // if the queues are full, no need to read more
-    if ((!m_dvdPlayerAudio.AcceptsData() && m_CurrentAudio.id >= 0)
-    ||  (!m_dvdPlayerVideo.AcceptsData() && m_CurrentVideo.id >= 0))
+    if ((m_dvdPlayerAudio.IsFull() && m_CurrentAudio.id >= 0)
+    ||  (m_dvdPlayerVideo.IsFull() && m_CurrentVideo.id >= 0))
     {
       Sleep(10);
       continue;
@@ -1400,8 +1400,8 @@ void CDVDPlayer::HandlePlaySpeed()
     }
     else
     {
-      if ((!m_dvdPlayerAudio.AcceptsData() && m_CurrentAudio.id >= 0)
-      ||  (!m_dvdPlayerVideo.AcceptsData() && m_CurrentVideo.id >= 0))
+      if ((m_dvdPlayerAudio.IsFull() && m_CurrentAudio.id >= 0)
+      ||  (m_dvdPlayerVideo.IsFull() && m_CurrentVideo.id >= 0))
         caching = CACHESTATE_INIT;
     }
   }
@@ -1416,8 +1416,8 @@ void CDVDPlayer::HandlePlaySpeed()
     // handle situation that we get no data on one stream
     if(m_CurrentAudio.id >= 0 && m_CurrentVideo.id >= 0)
     {
-      if ((!m_dvdPlayerAudio.AcceptsData() && !m_CurrentVideo.started)
-      ||  (!m_dvdPlayerVideo.AcceptsData() && !m_CurrentAudio.started))
+      if ((m_dvdPlayerAudio.IsFull() && !m_CurrentVideo.started)
+      ||  (m_dvdPlayerVideo.IsFull() && !m_CurrentAudio.started))
       {
         caching = CACHESTATE_DONE;
         SAFE_RELEASE(m_CurrentAudio.startsync);

@@ -39,14 +39,11 @@ public:
   void Flush();
 
   // waits until all available data has been rendered
-  void WaitForBuffers() { m_messageQueue.WaitUntilEmpty(); }
-  bool AcceptsData() { return !m_messageQueue.IsFull(); }
+  bool IsFull() { return m_messageQueue.IsFull(); }
   void SendMessage(CDVDMsg* pMsg) { if(m_messageQueue.IsInited()) m_messageQueue.Put(pMsg); }
 
   TextCacheStruct_t* GetTeletextCache() { return &m_TXTCache; }
   void LoadPage(int p, int sp, unsigned char* buffer);
-
-  CDVDMessageQueue m_messageQueue;
 
 protected:
   virtual void OnExit();
@@ -62,5 +59,6 @@ private:
   int m_speed;
   TextCacheStruct_t  m_TXTCache;
   CCriticalSection m_critSection;
+  CDVDMessageQueue m_messageQueue;
 };
 

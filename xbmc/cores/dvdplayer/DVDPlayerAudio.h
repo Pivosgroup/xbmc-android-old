@@ -103,9 +103,7 @@ public:
   void SetSpeed(int speed);
   void Flush();
 
-  // waits until all available data has been rendered
-  void WaitForBuffers();
-  bool AcceptsData()                                    { return !m_messageQueue.IsFull(); }
+  bool IsFull()                                         { return m_messageQueue.IsFull(); }
   bool HasData()                                        { return m_messageQueue.GetDataSize() > 0; }
   int  GetLevel()                                       { return m_messageQueue.GetLevel(); }
   bool IsInited()                                       { return m_messageQueue.IsInited(); }
