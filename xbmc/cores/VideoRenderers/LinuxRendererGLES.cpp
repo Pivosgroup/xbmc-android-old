@@ -1863,6 +1863,13 @@ EINTERLACEMETHOD CLinuxRendererGLES::AutoInterlaceMethod()
 #endif
 }
 
+#ifdef TARGET_AMLOGIC
+void CLinuxRendererGLES::AddProcessor(CAmlogic* amlcodec, DVDVideoPicture *picture)
+{
+  YUVBUFFER &buf = m_buffers[NextYV12Texture()];
+  buf.amlcodec = picture->amlcodec;
+}
+#endif
 #ifdef HAVE_LIBOPENMAX
 void CLinuxRendererGLES::AddProcessor(COpenMax* openMax, DVDVideoPicture *picture)
 {

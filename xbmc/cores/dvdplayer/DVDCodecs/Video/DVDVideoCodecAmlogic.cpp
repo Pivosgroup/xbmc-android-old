@@ -74,6 +74,7 @@ bool CDVDVideoCodecAmlogic::Open(CDVDStreamInfo &hints, CDVDCodecOptions &option
   m_videobuffer.iHeight = hints.height;
   m_videobuffer.iDisplayWidth  = hints.width;
   m_videobuffer.iDisplayHeight = hints.height;
+  m_videobuffer.amlcodec = m_Codec;
 
   CLog::Log(LOGINFO, "%s: Opened Amlogic Codec", __MODULE_NAME__);
   return true;

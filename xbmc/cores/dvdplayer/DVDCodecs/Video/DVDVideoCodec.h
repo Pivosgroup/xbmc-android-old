@@ -35,6 +35,7 @@
 namespace DXVA { class CSurfaceContext; }
 namespace VAAPI { struct CHolder; }
 class CVDPAU;
+class CAmlogic;
 class COpenMax;
 class COpenMaxVideo;
 struct OpenMaxVideoBuffer;
@@ -65,6 +66,11 @@ struct DVDVideoPicture
       VAAPI::CHolder* vaapi;
     };
 
+#ifdef TARGET_AMLOGIC
+    struct {
+      CAmlogic* amlcodec;
+    };
+#endif
     struct {
       COpenMax *openMax;
       OpenMaxVideoBuffer *openMaxBuffer;
