@@ -106,19 +106,21 @@ public:
     return Get(pMsg, iTimeoutInMilliSeconds, priority);
   }
 
-  int GetDataSize() const               { return m_iDataSize; }
   unsigned GetPacketCount(CDVDMsg::Message type);
   bool ReceivedAbortRequest()           { return m_bAbortRequest; }
   void WaitUntilEmpty();
 
   // non messagequeue related functions
-  bool IsFull() const                   { return GetLevel() == 100; }
+  bool IsInited() const;
+  bool IsFull() const;
   int  GetLevel() const;
-
-  void SetMaxDataSize(int iMaxDataSize) { m_iMaxDataSize = iMaxDataSize; }
-  void SetMaxTimeSize(double sec)       { m_TimeSize  = 1.0 / std::max(1.0, sec); }
-  int GetMaxDataSize() const            { return m_iMaxDataSize; }
-  bool IsInited() const                 { return m_bInitialized; }
+  int  GetTimeSize() const;
+  int  GetDataSize() const;
+  bool IsDataBased() const;
+  void SetMaxDataSize(int iMaxDataSize);
+  int  GetMaxDataSize() const;
+  void SetMaxTimeSize(double sec);
+  double GetMaxTimeSize() const;
 
 private:
 
@@ -129,11 +131,11 @@ private:
   bool m_bInitialized;
   bool m_bCaching;
 
-  int m_iDataSize;
   double m_TimeFront;
   double m_TimeBack;
-  double m_TimeSize;
+  double m_MaxTimeSize;
 
+  int m_iDataSize;
   int m_iMaxDataSize;
   bool m_bEmptied;
   std::string m_owner;

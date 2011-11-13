@@ -39,7 +39,7 @@ CDVDMessageQueue::CDVDMessageQueue(const string &owner) : m_hEvent(true)
 
   m_TimeBack      = DVD_NOPTS_VALUE;
   m_TimeFront     = DVD_NOPTS_VALUE;
-  m_TimeSize      = 1.0 / 4.0; /* 4 seconds */
+  m_MaxTimeSize   = 1.0 / 4.0; /* 4 seconds */
 }
 
 CDVDMessageQueue::~CDVDMessageQueue()
@@ -246,6 +246,16 @@ void CDVDMessageQueue::WaitUntilEmpty()
     msg->Release();
 }
 
+bool CDVDMessageQueue::IsInited() const
+{
+  return m_bInitialized;
+}
+
+bool CDVDMessageQueue::IsFull() const
+{
+  return GetLevel() == 100;
+}
+
 int CDVDMessageQueue::GetLevel() const
 {
   if(m_iDataSize > m_iMaxDataSize)
@@ -253,10 +263,49 @@ int CDVDMessageQueue::GetLevel() const
   if(m_iDataSize == 0)
     return 0;
 
-  if(m_TimeBack  == DVD_NOPTS_VALUE
-  || m_TimeFront == DVD_NOPTS_VALUE
-  || m_TimeFront <= m_TimeBack)
+  if(IsDataBased())
     return min(100, 100 * m_iDataSize / m_iMaxDataSize);
 
-  return min(100, MathUtils::round_int(100.0 * m_TimeSize * (m_TimeFront - m_TimeBack) / DVD_TIME_BASE ));
+  return min(100, MathUtils::round_int(100.0 * m_MaxTimeSize * (m_TimeFront - m_TimeBack) / DVD_TIME_BASE ));
 }
+
+int CDVDMessageQueue::GetTimeSize() const
+{
+  if(IsDataBased())
+    return 0;
+  else
+    return (m_TimeFront - m_TimeBack) / DVD_TIME_BASE;
+}
+
+int CDVDMessageQueue::GetDataSize() const
+{
+  return m_iDataSize;
+}
+
+bool CDVDMessageQueue::IsDataBased() const
+{
+  return (m_TimeBack == DVD_NOPTS_VALUE  ||
+          m_TimeFront == DVD_NOPTS_VALUE ||
+          m_TimeFront <= m_TimeBack);
+}
+
+void CDVDMessageQueue::SetMaxDataSize(int iMaxDataSize)
+{
+  m_iMaxDataSize = iMaxDataSize;
+}
+
+int  CDVDMessageQueue::GetMaxDataSize() const
+{
+  return m_iMaxDataSize;
+}
+
+void CDVDMessageQueue::SetMaxTimeSize(double sec)
+{
+  m_MaxTimeSize = 1.0 / std::max(1.0, sec);
+}
+
+double CDVDMessageQueue::GetMaxTimeSize() const
+{
+  return m_MaxTimeSize;
+}
+

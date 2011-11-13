@@ -53,11 +53,9 @@ public:
   void StepFrame();
   void Flush();
 
-  // waits until all available data has been rendered
-  // just waiting for packetqueue should be enough for video
   bool IsFull()                                     { return m_messageQueue.IsFull(); }
   bool HasData()                                    { return m_messageQueue.GetDataSize() > 0; }
-  int  GetLevel()                                   { return m_messageQueue.GetLevel(); }
+  int  GetLevel();
   bool IsInited()                                   { return m_messageQueue.IsInited(); }
   void SendMessage(CDVDMsg* pMsg, int priority = 0) { m_messageQueue.Put(pMsg, priority); }
 
