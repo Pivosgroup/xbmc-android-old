@@ -722,6 +722,7 @@ bool CAmlogic::OpenDecoder(CDVDStreamInfo &hints)
     case CODEC_ID_H264:
       printf("CODEC_ID_H264\n");
       am_private->stream_type = AM_STREAM_ES;
+      am_private->video_format = VFORMAT_H264;
       am_private->vcodec.has_video   = 1;
       am_private->vcodec.video_type  = VFORMAT_H264;
       am_private->vcodec.stream_type = STREAM_TYPE_ES_VIDEO;
