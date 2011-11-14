@@ -31,6 +31,21 @@
 
 #include <vector>
 
+static int osd_blank(const char *path, int cmd)
+{
+	int fd;
+	char  bcmd[16];
+	fd = open(path, O_CREAT|O_RDWR | O_TRUNC, 0644);
+	if (fd >= 0)
+  {
+    sprintf(bcmd, "%d", cmd);
+    write(fd, bcmd, strlen(bcmd));
+    close(fd);
+    return 0;
+  }
+	return -1;
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////
 CWinSystemGLES::CWinSystemGLES() : CWinSystemBase()
 {
@@ -83,12 +98,14 @@ bool CWinSystemGLES::CreateNewWindow(const CStdString& name, bool fullScreen, RE
     return false;
 
   m_bWindowCreated = true;
+  Show();
 
   return true;
 }
 
 bool CWinSystemGLES::DestroyWindow()
 {
+  Hide();
   if (!m_eglBinding->DestroyWindow())
     return false;
 
@@ -171,11 +188,13 @@ bool CWinSystemGLES::Restore()
 
 bool CWinSystemGLES::Hide()
 {
+	osd_blank("/sys/class/graphics/fb0/blank", 1);
   return true;
 }
 
 bool CWinSystemGLES::Show(bool raise)
 {
+	osd_blank("/sys/class/graphics/fb0/blank", 0);
   return true;
 }
 
