@@ -52,9 +52,11 @@ private:
   am_private_t  *am_private;
   bool          m_started;
   int64_t       m_cur_pts;
+  int64_t       m_1st_pts;
   int64_t       m_cur_pictcnt;
   int64_t       m_old_pictcnt;
   CEvent        m_ready_event;
+  pthread_mutex_t m_reset_mutex;
 };
 
 #endif

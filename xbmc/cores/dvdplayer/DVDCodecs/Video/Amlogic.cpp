@@ -680,6 +680,7 @@ CAmlogic::CAmlogic() : CThread("CAmlogic")
   m_started  = false;
   am_private = new am_private_t;
   memset(am_private, 0, sizeof(am_private_t));
+  pthread_mutex_init(&m_reset_mutex, NULL);
 }
 
 
@@ -688,12 +689,14 @@ CAmlogic::~CAmlogic()
   StopThread();
   delete am_private;
   am_private = NULL;
+  pthread_mutex_destroy(&m_reset_mutex);
 }
 
 bool CAmlogic::OpenDecoder(CDVDStreamInfo &hints)
 {
   printf("CAmlogic::OpenDecoder\n");
   m_cur_pts = 0;
+  m_1st_pts = 0;
   m_cur_pictcnt = 0;
   m_old_pictcnt = 0;
 
@@ -784,17 +787,23 @@ void CAmlogic::CloseDecoder(void)
 void CAmlogic::Reset(void)
 {
   printf("CAmlogic::Reset\n");
+
+  pthread_mutex_lock(&m_reset_mutex);
+
   // close and re-init the decoder, also handle any extradata prefeed
   codec_close(&am_private->vcodec);
   am_packet_release(&am_private->am_pkt);
   am_packet_init(&am_private->am_pkt);
   // open it up again and reload
-  codec_init (&am_private->vcodec);
+  codec_init(&am_private->vcodec);
   am_private->am_pkt.codec = &am_private->vcodec;
   pre_header_feeding(am_private, &am_private->am_pkt);
   m_cur_pts = 0;
+  m_1st_pts = 0;
   m_cur_pictcnt = 0;
   m_old_pictcnt = 0;
+
+  pthread_mutex_unlock(&m_reset_mutex);
 }
 
 int CAmlogic::Decode(unsigned char *pData, size_t size, double dts, double pts)
@@ -818,21 +827,48 @@ int CAmlogic::Decode(unsigned char *pData, size_t size, double dts, double pts)
 
     h264_update_frame_header(&am_private->am_pkt);
     write_av_packet(am_private, &am_private->am_pkt);
-
-    int timeout = 0.5 + (float)UNIT_FREQ/(2*am_private->video_rate);
-    m_ready_event.WaitMSec(timeout);
+    
+    // if we seek, then GetTimeSize is wrong as
+    // reports lastpts - m_cur_pts and hw decoder has
+    // not started outputing new pts values yet.
+    // so we grap the 1st pts sent into driver and
+    // use that to calc GetTimeSize.
+    if (m_1st_pts == 0)
+      m_1st_pts = am_private->am_pkt.lastpts;
   }
 
-  if (m_cur_pictcnt != m_old_pictcnt)
+  int rtn = 0;
+  double timesize = GetTimeSize();
+  // we need to keep about 1 second of demux in driver buffer
+  // or hw decoder can stall if the demux packets are small.
+  // This points to a driver error where it should be looking at
+  // how much time is remaining rather than the amount of bytes
+  // remaining before it auto pauses.
+  if (timesize > 0.95)
   {
-    int rtn = VC_PICTURE;
-    m_old_pictcnt = m_cur_pictcnt;
-    if (GetTimeSize() < 0.75)
-      rtn |= VC_BUFFER;
-    return rtn;
-  }
+    // wait a little less than the frame time regardless of if
+    // dvdplayervideo has passed a demux packet or not.
+    int timeout = (UNIT_FREQ/(am_private->video_rate)) - 1;
+    m_ready_event.WaitMSec(timeout);
 
-  return VC_BUFFER;
+    if (m_cur_pictcnt != m_old_pictcnt)
+    {
+      m_old_pictcnt = m_cur_pictcnt;
+      rtn |= VC_PICTURE;
+    }
+    else
+    {
+      rtn |= VC_BUFFER;
+    }
+  }
+  else
+  {
+    rtn |= VC_BUFFER;
+  }
+  //printf("CAmlogic::Process: rtn(%d), timesize(%f), m_cur_pictcnt(%lld), m_cur_pts(%lld), lastpts(%lld)\n",
+  //  rtn, timesize, m_cur_pictcnt, m_cur_pts, am_private->am_pkt.lastpts);
+
+  return rtn;
 }
 
 bool CAmlogic::GetPicture(DVDVideoPicture *pDvdVideoPicture)
@@ -863,13 +899,23 @@ int CAmlogic::GetDataSize(void)
 
 double CAmlogic::GetTimeSize(void)
 {
-  double timesize = (double)(am_private->am_pkt.lastpts - m_cur_pts) / (double)PTS_FREQ;
+  double timesize;
+  // if m_cur_pts is zero, hw decoder was not started yet
+  // so we use the pts of the 1st demux packet that was send
+  // to hw decoder to calc timesize. 
+  if (m_cur_pts == 0)
+    timesize = (double)(am_private->am_pkt.lastpts - m_1st_pts) / (double)PTS_FREQ;
+  else
+    timesize = (double)(am_private->am_pkt.lastpts - m_cur_pts) / (double)PTS_FREQ;
   //printf("CAmlogic::GetTimeSize: timesize(%f), m_cur_pictcnt(%lld), m_cur_pts(%lld), lastpts(%lld)\n",
   //  timesize, m_cur_pictcnt, m_cur_pts, am_private->am_pkt.lastpts);
 
   return timesize;
 }
 
+#define PARSER_ERROR_WRONG_PACKAGE_SIZE 0x80
+#define PARSER_ERROR_WRONG_HEAD_VER     0x40
+#define DECODER_ERROR_VLC_DECODE_TBL    0x20
 void CAmlogic::Process()
 {
   printf("CAmlogic::Process Started\n");
@@ -878,18 +924,24 @@ void CAmlogic::Process()
   {
     if (am_private->am_pkt.lastpts > 0)
     {
-      // blocked wait for video flip
+      int64_t cur_pts;
+      vdec_status vstatus;
+      // blocked wait for video flip, do not lock
+      // the reset mutex until after this call
+      // or we will deadlock on reset.
       codec_poll_cntl(&am_private->vcodec);
-      //Sleep(10);
-      int64_t cur_pts = codec_get_vpts(&am_private->vcodec);
+      pthread_mutex_lock(&m_reset_mutex);
+      codec_get_vdec_state(&am_private->vcodec, &vstatus);
+      cur_pts = codec_get_vpts(&am_private->vcodec);
+      pthread_mutex_unlock(&m_reset_mutex);
       if (cur_pts != m_cur_pts)
       {
         m_cur_pts = cur_pts;
         m_cur_pictcnt++;
         m_ready_event.Set();
-        double timesize = (double)(am_private->am_pkt.lastpts - m_cur_pts) / (double)PTS_FREQ;
-        printf("CAmlogic::Process: timesize(%f), m_cur_pictcnt(%lld), m_cur_pts(%lld), lastpts(%lld)\n",
-          timesize, m_cur_pictcnt, m_cur_pts, am_private->am_pkt.lastpts);
+        //double timesize = (double)(am_private->am_pkt.lastpts - m_cur_pts) / (double)PTS_FREQ;
+        //printf("CAmlogic::Process: timesize(%f), m_cur_pictcnt(%lld), m_cur_pts(%lld), lastpts(%lld)\n",
+        //  timesize, m_cur_pictcnt, m_cur_pts, am_private->am_pkt.lastpts);
       }
     }
     else
