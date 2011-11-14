@@ -46,19 +46,24 @@ extern "C" {
 //-----------------------------------------------------------------------------------
 //-----------------------------------------------------------------------------------
 // AppContext - Application state
-#define PTS_FREQ    90000
-#define UNIT_FREQ   96000
-#define AV_SYNC_THRESH PTS_FREQ*30
+#define PTS_FREQ        90000
+#define UNIT_FREQ       96000
+#define AV_SYNC_THRESH  PTS_FREQ*30
 
-#define INT64_0     INT64_C(0x8000000000000000)
+#define TRICKMODE_NONE  0x00
+#define TRICKMODE_I     0x01
+#define TRICKMODE_FFFB  0x02
 
-#define EXTERNAL_PTS (1)
-#define SYNC_OUTSIDE (2)
+#define INT64_0         INT64_C(0x8000000000000000)
+//#define AV_NOPTS_VALUE          INT64_C(0x8000000000000000)
 
-#define RW_WAIT_TIME        (20 * 1000) //20ms
+#define EXTERNAL_PTS    (1)
+#define SYNC_OUTSIDE    (2)
 
-#define P_PRE       (0x02000000)
-#define F_PRE       (0x03000000)
+#define RW_WAIT_TIME    (20 * 1000) // 20ms
+
+#define P_PRE           (0x02000000)
+#define F_PRE           (0x03000000)
 #define PLAYER_SUCCESS          (0)
 #define PLAYER_FAILED           (-(P_PRE|0x01))
 #define PLAYER_NOMEM            (-(P_PRE|0x02))
@@ -74,7 +79,6 @@ extern "C" {
 #define log_print printf
 #define log_error printf
 
-
 #define HDR_BUF_SIZE 1024
 typedef struct hdr_buf {
     char *data;
@@ -88,6 +92,7 @@ typedef struct am_packet {
     int           avduration;
     int           isvalid;
     int           newflag;
+    int64_t       lastpts;
     unsigned char *data;
     unsigned char *buf;
     int           data_size;
@@ -112,17 +117,6 @@ typedef union {
     unsigned int spkt_num;
 } read_write_size;
 
-typedef struct {
-    int             has_video;
-    vformat_t       video_format;
-    signed short    video_index;
-    unsigned short  video_pid;
-    int             check_first_pts;
-    int             flv_flag;
-    int             h263_decodable;
-    int             vdec_buf_len;
-} v_stream_info_t;
-
 typedef  struct {
     unsigned int read_end_flag: 1;
     unsigned int end_flag: 1;
@@ -134,18 +128,21 @@ typedef struct am_private_t
 {
   am_packet_t       am_pkt;
   codec_para_t      vcodec;
-  v_stream_info_t   vstream_info;
 
   pstream_type      stream_type;
   p_ctrl_info_t     playctrl_info;
 
   read_write_size   read_size;
   read_write_size   write_size;
+  int               check_first_pts;
 
+  vformat_t         video_format;
   unsigned int      video_width;
   unsigned int      video_height;
   float             video_ratio;
   unsigned int      video_rate;
+  unsigned int      video_codec_rate;
+  float             video_duration;
   float             time_base_ratio;
   int               extrasize;
   uint8_t           *extradata;
@@ -252,45 +249,45 @@ int set_tsync_enable(int enable)
     return set_sysfs_int("/sys/class/tsync/enable", enable);
 }
 /*************************************************************************/
-static void player_para_init(am_private_t *para)
-{
-    para->vstream_info.video_index = -1;
-}
-
 static void am_packet_init(am_packet_t *pkt)
 {
-  pkt->isvalid = 0;
-  pkt->newflag = 0;
-  pkt->codec  = NULL;
-  pkt->hdr    = NULL;
-  pkt->buf    = NULL;
-  pkt->buf_size = 0;
-  pkt->data   = NULL;
+  memset(&pkt->avpkt, 0, sizeof(AVPacket));
+  pkt->avpts      = 0;
+  pkt->avdts      = 0;
+  pkt->avduration = 0;
+  pkt->isvalid    = 0;
+  pkt->newflag    = 0;
+  pkt->lastpts    = 0;
+  pkt->data       = NULL;
+  pkt->buf        = NULL;
   pkt->data_size  = 0;
+  pkt->buf_size   = 0;
+  pkt->hdr        = NULL;
+  pkt->codec      = NULL;
 }
-static int check_vcodec_state(codec_para_t *codec, struct vdec_status *dec, struct buf_status *buf)
+
+void am_packet_release(am_packet_t *pkt)
 {
-    int ret;
-
-    ret = codec_get_vbuf_state(codec,  buf);
-    if (ret != 0) {
-        log_error("codec_get_vbuf_state error: %x\n", -ret);
-    }
-
-    ret = codec_get_vdec_state(codec, dec);
-    if (ret != 0) {
-        log_error("codec_get_vdec_state error: %x\n", -ret);
-        ret = PLAYER_CHECK_CODEC_ERROR;
-    }
-
-    return ret;
+  if (pkt->buf != NULL)
+  {
+    free(pkt->buf);
+    pkt->buf= NULL;
+  }
+  if (pkt->hdr != NULL)
+  {
+    free(pkt->hdr->data);
+    pkt->hdr->data = NULL;
+    free(pkt->hdr);
+    pkt->hdr = NULL;
+  }
+  pkt->codec = NULL;
 }
 
 int check_in_pts(am_private_t *para, am_packet_t *pkt)
 {
     int last_duration = 0;
     static int last_v_duration = 0;
-    int64_t pts;
+    int64_t pts = 0;
 
     last_duration = last_v_duration;
 
@@ -314,17 +311,20 @@ int check_in_pts(am_private_t *para, am_packet_t *pkt)
 
             last_v_duration = pkt->avduration ? pkt->avduration : 1;
         } else {
-            if (!para->vstream_info.check_first_pts) {
-                if (codec_checkin_pts(pkt->codec, 0) != 0) {
-                    //log_print("ERROR check in 0 to audio pts error!\n");
+            if (!para->check_first_pts) {
+                if (codec_checkin_pts(pkt->codec, pts) != 0) {
+                    log_print("ERROR check in 0 to video pts error!\n");
                     return PLAYER_PTS_ERROR;
                 }
             }
         }
-        if (!para->vstream_info.check_first_pts) {
-            para->vstream_info.check_first_pts = 1;
+        if (!para->check_first_pts) {
+            para->check_first_pts = 1;
         }
     }
+    if (pts > 0)
+      pkt->lastpts = pts;
+
     return PLAYER_SUCCESS;
 }
 
@@ -351,7 +351,7 @@ static int write_header(am_private_t *para, am_packet_t *pkt)
             write_bytes = codec_write(pkt->codec, pkt->hdr->data + len, pkt->hdr->size - len);
             if (write_bytes < 0 || write_bytes > (pkt->hdr->size - len)) {
                 if (-errno != AVERROR(EAGAIN)) {
-                    //log_print("ERROR:write header failed!\n");
+                    log_print("ERROR:write header failed!\n");
                     return PLAYER_WR_FAILED;
                 } else {
                     continue;
@@ -404,7 +404,7 @@ int write_av_packet(am_private_t *para, am_packet_t *pkt)
         if (write_bytes < 0 || write_bytes > size) {
             if (-errno != AVERROR(EAGAIN)) {
                 para->playctrl_info.check_lowlevel_eagain_cnt = 0;
-                //log_print("write codec data failed!\n");
+                log_print("write codec data failed!\n");
                 return PLAYER_WR_FAILED;
             } else {
                 // EAGAIN to see if buffer full or write time out too much		
@@ -420,7 +420,7 @@ int write_av_packet(am_private_t *para, am_packet_t *pkt)
                     para->playctrl_info.reset_flag = 1;
                     para->playctrl_info.end_flag = 1;
                     
-                    //log_print("$$$$$$ write blocked, need reset decoder!$$$$$$\n");
+                    log_print("$$$$$$ write blocked, need reset decoder!$$$$$$\n");
                 }				
                 pkt->data += len;
                 pkt->data_size -= len;
@@ -585,7 +585,7 @@ static int h264_write_header(am_private_t *para, am_packet_t *pkt)
 int pre_header_feeding(am_private_t *para, am_packet_t *pkt)
 {
     int ret;
-    if (para->stream_type == AM_STREAM_ES && para->vstream_info.has_video) {
+    if (para->stream_type == AM_STREAM_ES) {
         if (pkt->hdr == NULL) {
             pkt->hdr = (hdr_buf_t*)malloc(sizeof(hdr_buf_t));
             pkt->hdr->data = (char *)malloc(HDR_BUF_SIZE);
@@ -595,7 +595,7 @@ int pre_header_feeding(am_private_t *para, am_packet_t *pkt)
             }
         }
 
-        if (VFORMAT_H264 == para->vstream_info.video_format) {
+        if (VFORMAT_H264 == para->video_format) {
             ret = h264_write_header(para, pkt);
             if (ret != PLAYER_SUCCESS) {
                 return ret;
@@ -675,36 +675,44 @@ int h264_update_frame_header(am_packet_t *pkt)
 }
 
 /*************************************************************************/
-CAmlogic::CAmlogic()
+CAmlogic::CAmlogic() : CThread("CAmlogic")
 {
+  m_started  = false;
   am_private = new am_private_t;
   memset(am_private, 0, sizeof(am_private_t));
-  player_para_init(am_private);
-  am_packet_init(&am_private->am_pkt);
-  m_pts = 0;
 }
 
 
 CAmlogic::~CAmlogic()
 {
-  free(am_private->extradata);
-  am_private->extradata = NULL;
+  StopThread();
   delete am_private;
   am_private = NULL;
 }
 
 bool CAmlogic::OpenDecoder(CDVDStreamInfo &hints)
 {
-  am_private->video_width    = hints.width;
-  am_private->video_height   = hints.height;
-  am_private->video_ratio    = hints.aspect;
-  am_private->video_rate     = (int64_t)UNIT_FREQ * hints.fpsscale / hints.fpsrate;
-  am_private->time_base_ratio= hints.timebase * PTS_FREQ;
-  am_private->extrasize      = hints.extrasize;
-  am_private->extradata      = (uint8_t*)malloc(hints.extrasize);
+  printf("CAmlogic::OpenDecoder\n");
+  m_cur_pts = 0;
+  m_cur_pictcnt = 0;
+  m_old_pictcnt = 0;
+
+  am_packet_init(&am_private->am_pkt);
+  am_private->video_width     = hints.width;
+  am_private->video_height    = hints.height;
+  am_private->video_ratio     = hints.aspect;
+  am_private->video_rate      = 0.5 + (float)UNIT_FREQ * hints.fpsscale / hints.fpsrate;
+  am_private->video_codec_rate= 0.5 + (float)UNIT_FREQ * hints.timebase;
+  am_private->video_duration  = (float)UNIT_FREQ * hints.timebase;
+  am_private->time_base_ratio = (float)PTS_FREQ  * hints.timebase;
+  am_private->extrasize       = hints.extrasize;
+  am_private->extradata       = (uint8_t*)malloc(hints.extrasize);
   memcpy(am_private->extradata, hints.extradata, hints.extrasize);
 
-  printf("video_rate(%d), time_base_ratio(%f)\n", am_private->video_rate, am_private->time_base_ratio);
+  printf("timebase(%f), hints.fpsrate(%d), hints.fpsscale(%d), video_rate(%d), "
+    "video_codec_rate(%d), video_duration(%f) time_base_ratio(%f)\n",
+    hints.timebase, hints.fpsrate, hints.fpsscale, am_private->video_rate, am_private->video_codec_rate,
+    am_private->video_duration, am_private->time_base_ratio);
 
   switch(hints.codec)
   {
@@ -732,6 +740,7 @@ bool CAmlogic::OpenDecoder(CDVDStreamInfo &hints)
     break;
     default:
       fprintf(stderr, "ERROR: Unknown Codec Format = %d\n", hints.codec);
+      return false;
     break;
   }
 
@@ -741,72 +750,86 @@ bool CAmlogic::OpenDecoder(CDVDStreamInfo &hints)
 		printf("codec init failed, ret=-0x%x", -ret);
 		return false;
 	}
-	printf("video codec ok!\n");
+
+	ret = codec_init_cntl(&am_private->vcodec);
+	if( ret != CODEC_ERROR_NONE )
+	{
+		printf("codec_init_cntl failed, ret=-0x%x", -ret);
+		return -1;
+	}
 
 	codec_set_cntl_avthresh(&am_private->vcodec, AV_SYNC_THRESH);
-	codec_set_cntl_syncthresh(&am_private->vcodec, am_private->vcodec.has_audio);
-
-  //set_black_policy(0);
-  //player_video_alpha_en(true);
-  //player_video_overlay_en(true);
-  //set_sysfs_int("/sys/class/tsync/enable", 0);
-  codec_set_syncenable(&am_private->vcodec, 0);
+	codec_set_cntl_syncthresh(&am_private->vcodec, 0);
+  set_sysfs_int("/sys/class/tsync/enable", 0);
+  //codec_set_syncenable(&am_private->vcodec, 0);
 
   am_private->am_pkt.codec = &am_private->vcodec;
   pre_header_feeding(am_private, &am_private->am_pkt);
-  m_pts = 0;
+
+  Create();
 
   return true;
 }
 
 void CAmlogic::CloseDecoder(void)
 {
-  //set_black_policy(1);
-  //player_video_alpha_en(false);
-  //player_video_overlay_en(false);
-
+  printf("CAmlogic::CloseDecoder\n");
+  StopThread();
   codec_close(&am_private->vcodec);
+  am_packet_release(&am_private->am_pkt);
+  free(am_private->extradata);
+  am_private->extradata = NULL;
 }
 
 void CAmlogic::Reset(void)
 {
+  printf("CAmlogic::Reset\n");
   // close and re-init the decoder, also handle any extradata prefeed
   codec_close(&am_private->vcodec);
-  int ret = codec_init(&am_private->vcodec);
+  am_packet_release(&am_private->am_pkt);
+  am_packet_init(&am_private->am_pkt);
+  // open it up again and reload
+  codec_init (&am_private->vcodec);
+  am_private->am_pkt.codec = &am_private->vcodec;
   pre_header_feeding(am_private, &am_private->am_pkt);
+  m_cur_pts = 0;
+  m_cur_pictcnt = 0;
+  m_old_pictcnt = 0;
 }
 
 int CAmlogic::Decode(unsigned char *pData, size_t size, double dts, double pts)
 {
   if (pData)
   {
-    am_private->am_pkt.data = pData;
-    am_private->am_pkt.data_size = size;
-    am_private->am_pkt.newflag = 1;
-    am_private->am_pkt.isvalid = 1;
-    am_private->am_pkt.avpts = 0.5 + (pts * PTS_FREQ / (am_private->time_base_ratio * DVD_TIME_BASE));
-    am_private->am_pkt.avdts = 0.5 + (dts * PTS_FREQ / (am_private->time_base_ratio * DVD_TIME_BASE));
+    am_private->am_pkt.data       = pData;
+    am_private->am_pkt.data_size  = size;
+    am_private->am_pkt.newflag    = 1;
+    am_private->am_pkt.isvalid    = 1;
+    am_private->am_pkt.avduration = 0;
 
-    //printf("pts(%f), dts(%f), avpts(%lld), avdts(%lld)\n",
-    //  pts, dts, am_private->am_pkt.avpts, am_private->am_pkt.avdts);
+    if (pts == DVD_NOPTS_VALUE)
+      am_private->am_pkt.avpts = AV_NOPTS_VALUE;
+    else
+      am_private->am_pkt.avpts = 0.5 + (pts * PTS_FREQ / (am_private->time_base_ratio * DVD_TIME_BASE));
+    if (dts == DVD_NOPTS_VALUE)
+      am_private->am_pkt.avdts = AV_NOPTS_VALUE;
+    else
+      am_private->am_pkt.avdts = 0.5 + (dts * PTS_FREQ / (am_private->time_base_ratio * DVD_TIME_BASE));
 
     h264_update_frame_header(&am_private->am_pkt);
     write_av_packet(am_private, &am_private->am_pkt);
 
-    struct buf_status vbuf;
-    struct vdec_status vdec;
-    check_vcodec_state(&am_private->vcodec, &vdec, &vbuf);
-    float vlevel = 100.0 * (float)vbuf.data_len / vbuf.size;
-    usleep(1000);
-    //printf("buffering_states,vlevel=%d,vsize=%d,level=%f\n", vbuf.data_len, vbuf.size, vlevel);
+    int timeout = 0.5 + (float)UNIT_FREQ/(2*am_private->video_rate);
+    m_ready_event.WaitMSec(timeout);
   }
 
-  int cur_pts = codec_get_vpts(&am_private->vcodec) & ~0x2a000000;
-  if (cur_pts != m_pts)
+  if (m_cur_pictcnt != m_old_pictcnt)
   {
-    //printf("CAmlogic::Decode m_pts(%lld), cur_pts(%d)\n", m_pts, cur_pts);
-    m_pts = cur_pts;
-    return VC_PICTURE;
+    int rtn = VC_PICTURE;
+    m_old_pictcnt = m_cur_pictcnt;
+    if (GetTimeSize() < 0.75)
+      rtn |= VC_BUFFER;
+    return rtn;
   }
 
   return VC_BUFFER;
@@ -814,25 +837,67 @@ int CAmlogic::Decode(unsigned char *pData, size_t size, double dts, double pts)
 
 bool CAmlogic::GetPicture(DVDVideoPicture *pDvdVideoPicture)
 {
-  // we want the current pts from hardware.
-  double pts = (double)(codec_get_vpts(&am_private->vcodec) & ~0x2a000000) / am_private->time_base_ratio;
-
+  int64_t cur_pts = codec_get_vpts(&am_private->vcodec);
   pDvdVideoPicture->dts = DVD_NOPTS_VALUE;
-  pDvdVideoPicture->pts = pts * (double)DVD_TIME_BASE * (am_private->time_base_ratio / (double)PTS_FREQ);
-  pDvdVideoPicture->iDuration = (DVD_TIME_BASE / am_private->time_base_ratio);
-  
-  //printf("CAmlogic::GetPicture m_pts(%lld), pts(%f), pDvdVideoPicture->pts(%f), pDvdVideoPicture->iDuration(%f)\n",
-  //  m_pts, pts, pDvdVideoPicture->pts, pDvdVideoPicture->iDuration);
-
+  pDvdVideoPicture->pts = cur_pts * (double)DVD_TIME_BASE / (double)PTS_FREQ;
+  pDvdVideoPicture->iDuration = (double)DVD_TIME_BASE * am_private->video_rate / UNIT_FREQ;
   pDvdVideoPicture->iFlags = DVP_FLAG_ALLOCATED;
   pDvdVideoPicture->format = DVDVideoPicture::FMT_AMLREF;
-
   return true;
 }
 
 void CAmlogic::SetDropState(bool bDrop)
 {
-  printf("CAmlogic::SetDropState(%d)\n", bDrop);
+  //printf("CAmlogic::SetDropState(%d)\n", bDrop);
 }
 
+int CAmlogic::GetDataSize(void)
+{
+  struct buf_status vbuf;
+  vbuf.data_len = 0;
+  codec_get_vbuf_state(&am_private->vcodec, &vbuf);
+  //printf("CAmlogic::GetDataSize(%d)\n", vbuf.data_len);
+
+  return vbuf.data_len;
+}
+
+double CAmlogic::GetTimeSize(void)
+{
+  double timesize = (double)(am_private->am_pkt.lastpts - m_cur_pts) / (double)PTS_FREQ;
+  //printf("CAmlogic::GetTimeSize: timesize(%f), m_cur_pictcnt(%lld), m_cur_pts(%lld), lastpts(%lld)\n",
+  //  timesize, m_cur_pictcnt, m_cur_pts, am_private->am_pkt.lastpts);
+
+  return timesize;
+}
+
+void CAmlogic::Process()
+{
+  printf("CAmlogic::Process Started\n");
+  m_started = true;
+  while (!m_bStop)
+  {
+    if (am_private->am_pkt.lastpts > 0)
+    {
+      // blocked wait for video flip
+      codec_poll_cntl(&am_private->vcodec);
+      //Sleep(10);
+      int64_t cur_pts = codec_get_vpts(&am_private->vcodec);
+      if (cur_pts != m_cur_pts)
+      {
+        m_cur_pts = cur_pts;
+        m_cur_pictcnt++;
+        m_ready_event.Set();
+        double timesize = (double)(am_private->am_pkt.lastpts - m_cur_pts) / (double)PTS_FREQ;
+        printf("CAmlogic::Process: timesize(%f), m_cur_pictcnt(%lld), m_cur_pts(%lld), lastpts(%lld)\n",
+          timesize, m_cur_pictcnt, m_cur_pts, am_private->am_pkt.lastpts);
+      }
+    }
+    else
+    {
+      Sleep(10);
+    }
+  }
+  printf("CAmlogic::Process Stopped\n");
+  m_started = false;
+}
 #endif

@@ -95,14 +95,9 @@ void CDVDVideoCodecAmlogic::Dispose(void)
 
 int CDVDVideoCodecAmlogic::Decode(BYTE *pData, int iSize, double dts, double pts)
 {
-  if (pData)
-  {
-    // Handle Input, add demuxer packet to input queue, we must accept it or
-    // it will be discarded as DVDPlayerVideo has no concept of "try again".
-    return m_Codec->Decode(pData, iSize, dts, pts);
-  }
-
-  return VC_BUFFER;
+  // Handle Input, add demuxer packet to input queue, we must accept it or
+  // it will be discarded as DVDPlayerVideo has no concept of "try again".
+  return m_Codec->Decode(pData, iSize, dts, pts);
 }
 
 void CDVDVideoCodecAmlogic::Reset(void)
@@ -121,6 +116,16 @@ bool CDVDVideoCodecAmlogic::GetPicture(DVDVideoPicture* pDvdVideoPicture)
 void CDVDVideoCodecAmlogic::SetDropState(bool bDrop)
 {
   m_Codec->SetDropState(bDrop);
+}
+
+int CDVDVideoCodecAmlogic::GetDataSize(void)
+{
+  return m_Codec->GetDataSize();
+}
+
+double CDVDVideoCodecAmlogic::GetTimeSize(void)
+{
+  return m_Codec->GetTimeSize();
 }
 
 #endif

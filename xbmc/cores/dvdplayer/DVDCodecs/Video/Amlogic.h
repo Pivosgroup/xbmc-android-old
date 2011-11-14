@@ -24,10 +24,11 @@
 
 #include "DVDVideoCodec.h"
 #include "cores/dvdplayer/DVDStreamInfo.h"
+#include "threads/Thread.h"
 
 typedef struct am_private_t am_private_t;
 
-class CAmlogic
+class CAmlogic : public CThread
 {
 public:
   CAmlogic();
@@ -41,10 +42,19 @@ public:
 
   bool GetPicture(DVDVideoPicture* pDvdVideoPicture);
   void SetDropState(bool bDrop);
+  int  GetDataSize(void);
+  double GetTimeSize(void);
+
+protected:
+  virtual void Process();
 
 private:
   am_private_t  *am_private;
-  int64_t       m_pts;
+  bool          m_started;
+  int64_t       m_cur_pts;
+  int64_t       m_cur_pictcnt;
+  int64_t       m_old_pictcnt;
+  CEvent        m_ready_event;
 };
 
 #endif

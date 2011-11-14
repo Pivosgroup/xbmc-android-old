@@ -40,6 +40,8 @@ public:
   virtual void Reset(void);
   virtual bool GetPicture(DVDVideoPicture *pDvdVideoPicture);
   virtual void SetDropState(bool bDrop);
+  virtual int  GetDataSize(void);
+  virtual double GetTimeSize(void);
   virtual const char* GetName(void) { return (const char*)m_pFormatName; }
 
 protected:
