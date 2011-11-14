@@ -24,13 +24,11 @@
 #endif
 
 #if defined(TARGET_AMLOGIC)
-#include "Amlogic.h"
-#include "settings/GUISettings.h"
+#include "DVDVideoCodecAmlogic.h"
 #include "DVDClock.h"
 #include "DVDStreamInfo.h"
-#include "DVDVideoCodecAmlogic.h"
 #include "utils/log.h"
-#include "utils/TimeUtils.h"
+#include "Amlogic.h"
 
 #define __MODULE_NAME__ "DVDVideoCodecAmlogic"
 
