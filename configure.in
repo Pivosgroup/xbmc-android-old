@@ -505,7 +505,8 @@ case $host in
      AC_DEFINE(HAS_EGLGLES, [1], [Define if supporting EGL based GLES Framebuffer])
      CFLAGS="$CFLAGS -Wno-psabi -Wa,-mno-warn-deprecated"
      CXXFLAGS="$CXXFLAGS -Wno-psabi -Wa,-mno-warn-deprecated"
-     AC_CHECK_LIB([amcodec], [main],, AC_MSG_ERROR($missing_library))
+     AC_CHECK_LIB([amcodec] , [main],, AC_MSG_ERROR($missing_library))
+     AC_CHECK_LIB([amplayer], [main],, AC_MSG_ERROR($missing_library))
      #AC_CHECK_LIB([amljpeg], [amljpeg_init],, AC_MSG_ERROR($missing_library))
      ;;
   arm*-*-linux-gnu*)
@@ -1849,6 +1850,7 @@ OUTPUT_FILES="Makefile \
     xbmc/cores/dvdplayer/DVDSubtitles/Makefile \
     xbmc/cores/AudioRenderers/Makefile \
     xbmc/cores/paplayer/Makefile \
+    xbmc/cores/amlplayer/Makefile \
     lib/timidity/Makefile \
     lib/xbadpcm/Makefile \
     lib/asap/Makefile \

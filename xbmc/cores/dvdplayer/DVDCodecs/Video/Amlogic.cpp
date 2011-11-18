@@ -168,7 +168,7 @@ typedef struct am_private_t
 #define  FBIOPUT_OSD_2X_SCALE       0x4502
 #endif
 /*************************************************************************/
-int player_video_alpha_en(unsigned enable)
+static int player_video_alpha_en(unsigned enable)
 {
     int fd = open("/dev/graphics/fb0", O_RDWR);
     if (fd >= 0) {
@@ -189,7 +189,7 @@ int player_video_alpha_en(unsigned enable)
     return PLAYER_FAILED;
 }
 
-int player_video_overlay_en(unsigned enable)
+static int player_video_overlay_en(unsigned enable)
 {
     int fd = open("/dev/graphics/fb0", O_RDWR);
     if (fd >= 0) {
@@ -211,7 +211,7 @@ int player_video_overlay_en(unsigned enable)
     return PLAYER_FAILED;
 }
 
-int set_sysfs_int(const char *path, int val)
+static int set_sysfs_int(const char *path, int val)
 {
     int fd;
     int bytes;
@@ -226,7 +226,7 @@ int set_sysfs_int(const char *path, int val)
     return -1;
 }
 
-int get_sysfs_int(const char *path)
+static int get_sysfs_int(const char *path)
 {
     int fd;
     int val = 0;
@@ -240,11 +240,11 @@ int get_sysfs_int(const char *path)
     return val;
 }
 
-int set_black_policy(int blackout)
+static int set_black_policy(int blackout)
 {
     return set_sysfs_int("/sys/class/video/blackout_policy", blackout);
 }
-int set_tsync_enable(int enable)
+static int set_tsync_enable(int enable)
 {
     return set_sysfs_int("/sys/class/tsync/enable", enable);
 }
@@ -764,8 +764,8 @@ bool CAmlogic::OpenDecoder(CDVDStreamInfo &hints)
 
 	codec_set_cntl_avthresh(&am_private->vcodec, AV_SYNC_THRESH);
 	codec_set_cntl_syncthresh(&am_private->vcodec, 0);
+  // disable tsync, we are playing video disconnected from audio.
   set_sysfs_int("/sys/class/tsync/enable", 0);
-  //codec_set_syncenable(&am_private->vcodec, 0);
 
   am_private->am_pkt.codec = &am_private->vcodec;
   pre_header_feeding(am_private, &am_private->am_pkt);
@@ -783,6 +783,8 @@ void CAmlogic::CloseDecoder(void)
   am_packet_release(&am_private->am_pkt);
   free(am_private->extradata);
   am_private->extradata = NULL;
+  // return tsync to default so external apps work
+  set_sysfs_int("/sys/class/tsync/enable", 1);
 }
 
 void CAmlogic::Reset(void)
@@ -874,7 +876,8 @@ int CAmlogic::Decode(unsigned char *pData, size_t size, double dts, double pts)
 
 bool CAmlogic::GetPicture(DVDVideoPicture *pDvdVideoPicture)
 {
-  int64_t cur_pts = codec_get_vpts(&am_private->vcodec);
+  //int64_t cur_pts = codec_get_vpts(&am_private->vcodec);
+  int64_t cur_pts = codec_get_pcrscr(&am_private->vcodec);
   pDvdVideoPicture->dts = DVD_NOPTS_VALUE;
   pDvdVideoPicture->pts = cur_pts * (double)DVD_TIME_BASE / (double)PTS_FREQ;
   pDvdVideoPicture->iDuration = (double)DVD_TIME_BASE * am_private->video_rate / UNIT_FREQ;
@@ -933,7 +936,8 @@ void CAmlogic::Process()
       codec_poll_cntl(&am_private->vcodec);
       pthread_mutex_lock(&m_reset_mutex);
       codec_get_vdec_state(&am_private->vcodec, &vstatus);
-      cur_pts = codec_get_vpts(&am_private->vcodec);
+      //cur_pts = codec_get_vpts(&am_private->vcodec);
+      cur_pts = codec_get_pcrscr(&am_private->vcodec);
       pthread_mutex_unlock(&m_reset_mutex);
       if (cur_pts != m_cur_pts)
       {
