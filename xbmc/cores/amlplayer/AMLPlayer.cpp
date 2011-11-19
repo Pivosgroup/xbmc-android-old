@@ -832,21 +832,17 @@ void CAMLPlayer::Process()
   CLog::Log(LOGNOTICE, "CAMLPlayer::Process");
   try
   {
-    // wait for media to open with 10 second timeout.
-    if (WaitForOpenMedia(20000))
+    // wait for media to open with 30 second timeout.
+    if (WaitForOpenMedia(30000))
     {
       // start the playback.
 			int res = player_start_play(m_pid);
       if (res != PLAYER_SUCCESS)
-      {
-        CLog::Log(LOGDEBUG,"CAMLPlayer::Process:player_start_play() failed");
-        throw;
-      }
+        throw "CAMLPlayer::Process:player_start_play() failed";
     }
     else
     {
-      CLog::Log(LOGDEBUG, "CAMLPlayer::Process:WaitForOpenMedia timeout");
-      throw;
+      throw "CAMLPlayer::Process:WaitForOpenMedia timeout";
     }
 
     // hide the mainvideo layer so we can get stream info
@@ -855,7 +851,7 @@ void CAMLPlayer::Process()
     if (m_item.IsVideo())
       ShowMainVideo(false);
 
-    // wait for playback to start with 10 second timeout
+    // wait for playback to start with 20 second timeout
     if (WaitForPlaying(20000))
     {
       m_speed = 1;
@@ -924,7 +920,7 @@ void CAMLPlayer::Process()
           case PLAYER_INITING:
           case PLAYER_TYPE_REDY:
           case PLAYER_INITOK:
-            printf("CAMLPlayer::CAMLPlayer::Process: %s\n", player_status2str(pstatus));
+            printf("CAMLPlayer::Process: %s\n", player_status2str(pstatus));
             // player is parsing file, decoder not running
             break;
           
@@ -942,25 +938,29 @@ void CAMLPlayer::Process()
           case PLAYER_FB_END:
           case PLAYER_PLAY_NEXT:
           case PLAYER_BUFFER_OK:
-            printf("CAMLPlayer::CAMLPlayer::Process: %s\n", player_status2str(pstatus));
+            printf("CAMLPlayer::Process: %s\n", player_status2str(pstatus));
             break;
 
           case PLAYER_PLAYEND:
             GetStatus();
-            printf("CAMLPlayer::CAMLPlayer::Process: %s\n", player_status2str(pstatus));
+            printf("CAMLPlayer::Process: %s\n", player_status2str(pstatus));
             break;
 
           case PLAYER_ERROR:
           case PLAYER_STOPED:
           case PLAYER_EXIT:
             printf("CAMLPlayer::Process PLAYER_STOPED\n");
-            printf("CAMLPlayer::CAMLPlayer::Process: %s\n", player_status2str(pstatus));
+            printf("CAMLPlayer::Process: %s\n", player_status2str(pstatus));
             keep_playing = false;
             break;
         }
         Sleep(1000);
       }
     }
+  }
+  catch(char* error)
+  {
+    CLog::Log(LOGERROR, "%s", error);
   }
   catch(...)
   {
@@ -998,8 +998,6 @@ void CAMLPlayer::ShowMainVideo(bool show)
 
 bool CAMLPlayer::WaitForStopped(int timeout_ms)
 {
-  bool rtn = false;
-
   while (!m_bStop && (timeout_ms > 0))
   {
 		player_status pstatus = player_get_state(m_pid);
@@ -1018,13 +1016,11 @@ bool CAMLPlayer::WaitForStopped(int timeout_ms)
 		}
   }
 
-  return rtn;
+  return false;
 }
 
 bool CAMLPlayer::WaitForPlaying(int timeout_ms)
 {
-  bool rtn = false;
-
   while (!m_bStop && (timeout_ms > 0))
   {
 		player_status pstatus = player_get_state(m_pid);
@@ -1032,8 +1028,8 @@ bool CAMLPlayer::WaitForPlaying(int timeout_ms)
 		switch(pstatus)
 		{
 			default:
-				Sleep(100);
-				timeout_ms -= 100;
+				Sleep(500);
+				timeout_ms -= 500;
 				break;
       case PLAYER_ERROR:
 			case PLAYER_EXIT:
@@ -1044,13 +1040,11 @@ bool CAMLPlayer::WaitForPlaying(int timeout_ms)
 				break;
 		}
 	}
-  return rtn;
+  return false;
 }
 
 bool CAMLPlayer::WaitForOpenMedia(int timeout_ms)
 {
-  bool rtn = false;
-
   while (!m_bStop && (timeout_ms > 0))
   {
 		player_status pstatus = player_get_state(m_pid);
@@ -1072,13 +1066,11 @@ bool CAMLPlayer::WaitForOpenMedia(int timeout_ms)
 		}
   }
 
-  return rtn;
+  return false;
 }
 
 bool CAMLPlayer::WaitForFormatValid(int timeout_ms)
 {
-  bool rtn = false;
-
   while (!m_bStop && (timeout_ms > 0))
   {
 		player_status pstatus = player_get_state(m_pid);
@@ -1118,7 +1110,7 @@ bool CAMLPlayer::WaitForFormatValid(int timeout_ms)
 		}
   }
 
-  return rtn;
+  return false;
 }
 
 bool CAMLPlayer::GetStatus()
