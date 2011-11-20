@@ -86,60 +86,64 @@ static int media_info_dump(media_info_t* minfo)
 {
   int i = 0;
   printf("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\n");
-  printf("======||file size:%lld\n",            minfo->stream_info.file_size);
-  printf("======||file type:%d\n",              minfo->stream_info.type); 
-  printf("======||duration:%d\n",               minfo->stream_info.duration);
-  printf("======||has video track?:%s\n",       minfo->stream_info.has_video>0?"YES!":"NO!");
-  printf("======||has audio track?:%s\n",       minfo->stream_info.has_audio>0?"YES!":"NO!");    
-  printf("======||has internal subtitle?:%s\n", minfo->stream_info.has_sub>0?"YES!":"NO!");
-  printf("======||internal subtile counts:%d\n",minfo->stream_info.total_sub_num);
+  printf("======||file size:%lld\n",                          minfo->stream_info.file_size);
+  printf("======||file type:%d\n",                            minfo->stream_info.type); 
+  printf("======||duration:%d\n",                             minfo->stream_info.duration);
+  printf("======||has video track?:%s\n",                     minfo->stream_info.has_video>0?"YES!":"NO!");
+  printf("======||has audio track?:%s\n",                     minfo->stream_info.has_audio>0?"YES!":"NO!");    
+  printf("======||has internal subtitle?:%s\n",               minfo->stream_info.has_sub>0?"YES!":"NO!");
+  printf("======||internal subtile counts:%d\n",              minfo->stream_info.total_sub_num);
   if (minfo->stream_info.has_video && minfo->stream_info.total_video_num > 0)
   {        
-    printf("======||video counts:%d\n",         minfo->stream_info.total_video_num);
-    printf("======||video width :%d\n",         minfo->video_info[0]->width);
-    printf("======||video ratio :%d:%d\n",      minfo->video_info[0]->aspect_ratio_num,minfo->video_info[0]->aspect_ratio_den);
-    printf("======||frame_rate  :%.2f\n",       (float)minfo->video_info[0]->frame_rate_num/minfo->video_info[0]->frame_rate_den);
-    printf("======||video height:%d\n",         minfo->video_info[0]->height);
-    printf("======||video bitrate:%d\n",        minfo->video_info[0]->bit_rate);
-    printf("======||video format:%d\n",         minfo->video_info[0]->format);
-    printf("======||video duration:%d\n",       minfo->video_info[0]->duartion);
+    printf("======||video index:%d\n",                        minfo->stream_info.cur_video_index);
+    printf("======||video counts:%d\n",                       minfo->stream_info.total_video_num);
+    printf("======||video width :%d\n",                       minfo->video_info[0]->width);
+    printf("======||video ratio :%d:%d\n",                    minfo->video_info[0]->aspect_ratio_num,minfo->video_info[0]->aspect_ratio_den);
+    printf("======||frame_rate  :%.2f\n",                     (float)minfo->video_info[0]->frame_rate_num/minfo->video_info[0]->frame_rate_den);
+    printf("======||video height:%d\n",                       minfo->video_info[0]->height);
+    printf("======||video bitrate:%d\n",                      minfo->video_info[0]->bit_rate);
+    printf("======||video format:%d\n",                       minfo->video_info[0]->format);
+    printf("======||video duration:%d\n",                     minfo->video_info[0]->duartion);
   }
   if (minfo->stream_info.has_audio && minfo->stream_info.total_audio_num > 0)
   {
-    printf("======||audio counts:%d\n",minfo->stream_info.total_audio_num);
+    printf("======||audio index:%d\n",                        minfo->stream_info.cur_audio_index);
+    printf("======||audio counts:%d\n",                       minfo->stream_info.total_audio_num);
     for (i = 0; i < minfo->stream_info.total_audio_num; i++)
     {
       printf("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n");
-      printf("======||audio track(%d) codec type:%d\n",        i, minfo->audio_info[i]->aformat);
-      printf("======||audio track(%d) audio_channel:%d\n",     i, minfo->audio_info[i]->channel);
-      printf("======||audio track(%d) bit_rate:%d\n",          i, minfo->audio_info[i]->bit_rate);
-      printf("======||audio track(%d) audio_samplerate:%d\n",  i, minfo->audio_info[i]->sample_rate);
-      printf("======||audio track(%d) duration:%d\n",          i, minfo->audio_info[i]->duration);
+      printf("======||audio track(%d) codec type:%d\n",       i, minfo->audio_info[i]->aformat);
+      printf("======||audio track(%d) audio_channel:%d\n",    i, minfo->audio_info[i]->channel);
+      printf("======||audio track(%d) bit_rate:%d\n",         i, minfo->audio_info[i]->bit_rate);
+      printf("======||audio track(%d) audio_samplerate:%d\n", i, minfo->audio_info[i]->sample_rate);
+      printf("======||audio track(%d) duration:%d\n",         i, minfo->audio_info[i]->duration);
       printf("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n");
       if (NULL != minfo->audio_info[i]->audio_tag)
       {
-        printf("======||audio track title:%s",          minfo->audio_info[i]->audio_tag->title!=NULL?minfo->audio_info[i]->audio_tag->title:"unknown");   
-        printf("\n======||audio track album:%s",        minfo->audio_info[i]->audio_tag->album!=NULL?minfo->audio_info[i]->audio_tag->album:"unknown"); 
-        printf("\n======||audio track author:%s\n",     minfo->audio_info[i]->audio_tag->author!=NULL?minfo->audio_info[i]->audio_tag->author:"unknown");
-        printf("\n======||audio track year:%s\n",       minfo->audio_info[i]->audio_tag->year!=NULL?minfo->audio_info[i]->audio_tag->year:"unknown");
-        printf("\n======||audio track comment:%s\n",    minfo->audio_info[i]->audio_tag->comment!=NULL?minfo->audio_info[i]->audio_tag->comment:"unknown"); 
-        printf("\n======||audio track genre:%s\n",      minfo->audio_info[i]->audio_tag->genre!=NULL?minfo->audio_info[i]->audio_tag->genre:"unknown");
-        printf("\n======||audio track copyright:%s\n",  minfo->audio_info[i]->audio_tag->copyright!=NULL?minfo->audio_info[i]->audio_tag->copyright:"unknown");  
-        printf("\n======||audio track track:%d\n",      minfo->audio_info[i]->audio_tag->track);  
+        printf("======||audio track title:%s",                minfo->audio_info[i]->audio_tag->title!=NULL?minfo->audio_info[i]->audio_tag->title:"unknown");   
+        printf("\n======||audio track album:%s",              minfo->audio_info[i]->audio_tag->album!=NULL?minfo->audio_info[i]->audio_tag->album:"unknown"); 
+        printf("\n======||audio track author:%s\n",           minfo->audio_info[i]->audio_tag->author!=NULL?minfo->audio_info[i]->audio_tag->author:"unknown");
+        printf("\n======||audio track year:%s\n",             minfo->audio_info[i]->audio_tag->year!=NULL?minfo->audio_info[i]->audio_tag->year:"unknown");
+        printf("\n======||audio track comment:%s\n",          minfo->audio_info[i]->audio_tag->comment!=NULL?minfo->audio_info[i]->audio_tag->comment:"unknown"); 
+        printf("\n======||audio track genre:%s\n",            minfo->audio_info[i]->audio_tag->genre!=NULL?minfo->audio_info[i]->audio_tag->genre:"unknown");
+        printf("\n======||audio track copyright:%s\n",        minfo->audio_info[i]->audio_tag->copyright!=NULL?minfo->audio_info[i]->audio_tag->copyright:"unknown");  
+        printf("\n======||audio track track:%d\n",            minfo->audio_info[i]->audio_tag->track);  
       }
     }
   }
   if (minfo->stream_info.has_sub && minfo->stream_info.total_sub_num > 0)
   {
+    printf("======||subtitle index:%d\n",                     minfo->stream_info.cur_sub_index);
+    printf("======||subtitle counts:%d\n",                    minfo->stream_info.total_sub_num);
     for (i = 0; i < minfo->stream_info.total_sub_num; i++)
     {
       if (0 == minfo->sub_info[i]->internal_external){
         printf("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n");
-        printf("======||internal subtitle(%d) pid:%d\n",       i, minfo->sub_info[i]->id);   
-        printf("======||internal subtitle(%d) language:%s\n",  i, minfo->sub_info[i]->sub_language?minfo->sub_info[i]->sub_language:"unknown"); 
-        printf("======||internal subtitle(%d) width:%d\n",     i, minfo->sub_info[i]->width); 
-        printf("======||internal subtitle(%d) height:%d\n",    i, minfo->sub_info[i]->height); 
-        printf("======||internal subtitle(%d) resolution:%d\n",i, minfo->sub_info[i]->resolution); 
+        printf("======||internal subtitle(%d) pid:%d\n",      i, minfo->sub_info[i]->id);   
+        printf("======||internal subtitle(%d) language:%s\n", i, minfo->sub_info[i]->sub_language?minfo->sub_info[i]->sub_language:"unknown"); 
+        printf("======||internal subtitle(%d) width:%d\n",    i, minfo->sub_info[i]->width); 
+        printf("======||internal subtitle(%d) height:%d\n",   i, minfo->sub_info[i]->height); 
+        printf("======||internal subtitle(%d) resolution:%d\n", i, minfo->sub_info[i]->resolution); 
         printf("======||internal subtitle(%d) subtitle size:%lld\n", i, minfo->sub_info[i]->subtitle_size); 
         printf("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n");       
       }
@@ -1108,7 +1112,9 @@ bool CAMLPlayer::WaitForFormatValid(int timeout_ms)
         // total_video_xxx is > 0, not sure why, they should be set to zero or
         // some other sensible value.
         printf("CAMLPlayer::WaitForFormatValid: m_video_index(%d), m_audio_index(%d), m_subtitle_index(%d)\n",
-          m_video_index, m_audio_index, m_subtitle_index);
+          media_info.stream_info.cur_video_index,
+          media_info.stream_info.cur_audio_index,
+          media_info.stream_info.cur_sub_index);
         if (media_info.stream_info.has_video && media_info.stream_info.total_video_num > 0)
         {
           m_video_index						= media_info.stream_info.cur_video_index;
