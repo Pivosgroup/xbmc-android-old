@@ -13,7 +13,7 @@ export PYTHON_NOVERSIONCHECK=no-check
 
 export PATH:=$(SYSROOT)/usr/bin:$(PATH)
 CONFIGURE=./configure --prefix=$(PREFIX) --host=$(HOST) \
-  --enable-external-python --enable-gles --disable-sdl --disable-x11 --disable-xrandr \
+  --enable-neon --enable-external-python --enable-gles --disable-sdl --disable-x11 --disable-xrandr \
   --disable-optical-drive --disable-dvdcss --disable-texturepacker --enable-external-ffmpeg --enable-debug
 
 all: configure
