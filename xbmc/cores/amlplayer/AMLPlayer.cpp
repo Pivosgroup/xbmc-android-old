@@ -77,8 +77,8 @@ static int set_sysfs_int(const char *path, int val)
 
 static int update_player_info(int pid,player_info_t * info)
 {
-  printf("update_player_info: pid:%d, status:%x, current pos:%d, total:%d, errcode:%x\n",
-    pid, info->status,info->current_time, info->full_time, ~(info->error_no));
+  //printf("update_player_info: pid:%d, status:%x, current pos:%d, total:%d, errcode:%x\n",
+  //  pid, info->status,info->current_time, info->full_time, ~(info->error_no));
   return 0;
 }
 
@@ -93,7 +93,7 @@ static int media_info_dump(media_info_t* minfo)
   printf("======||has audio track?:%s\n",       minfo->stream_info.has_audio>0?"YES!":"NO!");    
   printf("======||has internal subtitle?:%s\n", minfo->stream_info.has_sub>0?"YES!":"NO!");
   printf("======||internal subtile counts:%d\n",minfo->stream_info.total_sub_num);
-  if (minfo->stream_info.has_video &&minfo->stream_info.total_video_num>0)
+  if (minfo->stream_info.has_video && minfo->stream_info.total_video_num > 0)
   {        
     printf("======||video counts:%d\n",         minfo->stream_info.total_video_num);
     printf("======||video width :%d\n",         minfo->video_info[0]->width);
@@ -104,7 +104,7 @@ static int media_info_dump(media_info_t* minfo)
     printf("======||video format:%d\n",         minfo->video_info[0]->format);
     printf("======||video duration:%d\n",       minfo->video_info[0]->duartion);
   }
-  if (minfo->stream_info.has_audio && minfo->stream_info.total_audio_num> 0)
+  if (minfo->stream_info.has_audio && minfo->stream_info.total_audio_num > 0)
   {
     printf("======||audio counts:%d\n",minfo->stream_info.total_audio_num);
     for (i = 0; i < minfo->stream_info.total_audio_num; i++)
@@ -129,7 +129,7 @@ static int media_info_dump(media_info_t* minfo)
       }
     }
   }
-  if (minfo->stream_info.has_sub &&minfo->stream_info.total_sub_num>0)
+  if (minfo->stream_info.has_sub && minfo->stream_info.total_sub_num > 0)
   {
     for (i = 0; i < minfo->stream_info.total_sub_num; i++)
     {
@@ -162,8 +162,8 @@ CAMLPlayer::CAMLPlayer(IPlayerCallback &callback)
   m_StopPlaying = false;
   if (!m_aml_init)
   {
-    player_init();
-    printf("player init......\n");
+    //player_init();
+    //printf("player init......\n");
     m_aml_init = true;
   }
 }
@@ -228,6 +228,8 @@ bool CAMLPlayer::OpenFile(const CFileItem &file, const CPlayerOptions &options)
       url = m_item.GetPath();
     }
 
+    player_init();
+    printf("player init......\n");
 		static play_control_t  play_control;
     memset(&play_control, 0, sizeof(play_control_t));
     // if we do not register a callback,
@@ -251,11 +253,14 @@ bool CAMLPlayer::OpenFile(const CFileItem &file, const CPlayerOptions &options)
       return false;
     }
 
+    // setupo to spin the busy dialog until we are playing
+    m_ready.Reset();
+
+    g_renderManager.PreInit();
+
     // create the playing thread
     m_StopPlaying = false;
     Create();
-    // spin the busy dialog until we are playing
-    m_ready.Reset();
     if(!m_ready.WaitMSec(100))
     {
       CGUIDialogBusy *dialog = (CGUIDialogBusy*)g_windowManager.GetWindow(WINDOW_DIALOG_BUSY);
@@ -530,7 +535,7 @@ void CAMLPlayer::GetSubtitleName(int iStream, CStdString &strStreamName)
 {
   //CLog::Log(LOGDEBUG, "CAMLPlayer::GetSubtitleName");
   CSingleLock lock(m_aml_csection);
-
+  strStreamName.Format("GetSubtitleName_%d", iStream);
   //strStreamName.Format("%s", res.value.streamInfo.name);
 }
  
@@ -538,6 +543,9 @@ void CAMLPlayer::SetSubtitle(int iStream)
 {
   //CLog::Log(LOGDEBUG, "CAMLPlayer::SetSubtitle");
   CSingleLock lock(m_aml_csection);
+  if (check_pid_valid(m_pid) && iStream > m_subtitle_count)
+    player_sid(m_pid, iStream);
+  m_subtitle_index = iStream;
 }
 
 bool CAMLPlayer::GetSubtitleVisible()
@@ -551,6 +559,7 @@ void CAMLPlayer::SetSubtitleVisible(bool bVisible)
 
   //if (bVisible)
   //else
+  m_subtitle_show = bVisible;
 }
 
 int CAMLPlayer::AddSubtitle(const CStdString& strSubPath)
@@ -808,8 +817,11 @@ void CAMLPlayer::ToFFRW(int iSpeed)
 
 void CAMLPlayer::OnStartup()
 {
+  //m_CurrentVideo.Clear();
+  //m_CurrentAudio.Clear();
+  //m_CurrentSubtitle.Clear();
+
   //CThread::SetName("CAMLPlayer");
-  g_renderManager.PreInit();
 }
 
 void CAMLPlayer::OnExit()
@@ -911,8 +923,7 @@ void CAMLPlayer::Process()
       if (m_options.identify == false)
         m_callback.OnPlayBackStarted();
 
-      bool keep_playing = true;
-      while (keep_playing && !m_bStop && !m_StopPlaying)
+      while (!m_bStop && !m_StopPlaying)
       {
         player_status pstatus = player_get_state(m_pid);
         switch(pstatus)
@@ -951,10 +962,10 @@ void CAMLPlayer::Process()
           case PLAYER_EXIT:
             printf("CAMLPlayer::Process PLAYER_STOPED\n");
             printf("CAMLPlayer::Process: %s\n", player_status2str(pstatus));
-            keep_playing = false;
+            m_StopPlaying = true;
             break;
         }
-        Sleep(1000);
+        Sleep(500);
       }
     }
   }
@@ -1092,19 +1103,39 @@ bool CAMLPlayer::WaitForFormatValid(int timeout_ms)
           return false;
 
         media_info_dump(&media_info);
-                
-        m_video_index						= media_info.stream_info.cur_video_index;
-        m_video_count						= media_info.stream_info.total_video_num;
-        m_video_width						= media_info.video_info[m_video_index]->width;
-        m_video_height					= media_info.video_info[m_video_index]->height;
-        m_video_fps_numerator		= media_info.video_info[m_video_index]->frame_rate_num;
-        m_video_fps_denominator = media_info.video_info[m_video_index]->frame_rate_den;
 
-        m_audio_index						= media_info.stream_info.cur_audio_index;
-        m_audio_count						= media_info.stream_info.total_audio_num;
+        // m_video_index, m_audio_index, m_subtitle_index might be -1 eventhough 
+        // total_video_xxx is > 0, not sure why, they should be set to zero or
+        // some other sensible value.
+        printf("CAMLPlayer::WaitForFormatValid: m_video_index(%d), m_audio_index(%d), m_subtitle_index(%d)\n",
+          m_video_index, m_audio_index, m_subtitle_index);
+        if (media_info.stream_info.has_video && media_info.stream_info.total_video_num > 0)
+        {
+          m_video_index						= media_info.stream_info.cur_video_index;
+          m_video_count						= media_info.stream_info.total_video_num;
+          if (m_video_index != 0)
+            m_video_index = 0;
+          m_video_width						= media_info.video_info[m_video_index]->width;
+          m_video_height					= media_info.video_info[m_video_index]->height;
+          m_video_fps_numerator		= media_info.video_info[m_video_index]->frame_rate_num;
+          m_video_fps_denominator = media_info.video_info[m_video_index]->frame_rate_den;
+        }
 
-        m_subtitle_index				= media_info.stream_info.cur_sub_index;
-        m_subtitle_count				= media_info.stream_info.total_sub_num;
+        if (media_info.stream_info.has_audio && media_info.stream_info.total_audio_num > 0)
+        {
+          m_audio_index						= media_info.stream_info.cur_audio_index;
+          if (m_audio_index != 0)
+            m_audio_index = 0;
+          m_audio_count						= media_info.stream_info.total_audio_num;
+        }
+
+        if (media_info.stream_info.has_sub && media_info.stream_info.total_sub_num > 0)
+        {
+          m_subtitle_index				= media_info.stream_info.cur_sub_index;
+          if (m_subtitle_index != 0)
+            m_subtitle_index = 0;
+          m_subtitle_count				= media_info.stream_info.total_sub_num;
+        }
         return true;
 				break;
 		}
@@ -1127,8 +1158,8 @@ bool CAMLPlayer::GetStatus()
 
 	m_elapsed_ms  = player_info.current_ms;
   m_duration_ms = 1000 * player_info.full_time;
-  printf("CAMLPlayer::GetStatus: audio_bufferlevel(%f), video_bufferlevel(%f), bufed_time(%d), bufed_pos(%lld)\n",
-    player_info.audio_bufferlevel, player_info.video_bufferlevel, player_info.bufed_time, player_info.bufed_pos);
+  //printf("CAMLPlayer::GetStatus: audio_bufferlevel(%f), video_bufferlevel(%f), bufed_time(%d), bufed_pos(%lld)\n",
+  //  player_info.audio_bufferlevel, player_info.video_bufferlevel, player_info.bufed_time, player_info.bufed_pos);
 		
 	return true;
 }
