@@ -26,7 +26,6 @@ LIBS=
 ifneq (@USE_EXTERNAL_FFMPEG@,1)
   LIBS+=avutil-50-$(ARCH).so \
 	avcodec-52-$(ARCH).so \
-	avcore-0-$(ARCH).so \
 	avformat-52-$(ARCH).so \
 	postproc-51-$(ARCH).so \
 	avfilter-1-$(ARCH).so \
@@ -64,10 +63,6 @@ $(SYSDIR)/avcodec-52-$(ARCH).so: $(WRAPPER) ffmpeg/libavcodec/libavcodec.dylib
 		$(WRAPPER) ffmpeg/libavcodec/*.o \
 		ffmpeg/libavcodec/$(ARCH_DIR)/*.o $(BUNDLE1_O)
 
-$(SYSDIR)/avcore-0-$(ARCH).so: $(WRAPPER) ffmpeg/libavcore/libavcore.dylib
-	$(LD) $(LDFLAGS) -alias_list $(WRAPPER_MACH_ALIAS)  -o $@ \
-		$(WRAPPER) ffmpeg/libavcore/*.o $(BUNDLE1_O)
-
 $(SYSDIR)/avformat-52-$(ARCH).so: $(WRAPPER) ffmpeg/libavformat/libavformat.dylib
 	$(LD) $(LDFLAGS) -alias_list $(WRAPPER_MACH_ALIAS)  -o $@ \
 		$(WRAPPER) ffmpeg/libavformat/*.o $(BUNDLE1_O)
@@ -100,7 +95,6 @@ $(SYSDIR)/postproc-51-$(ARCH).so: $(WRAPPER) ffmpeg/libpostproc/libpostproc.dyli
 
 ffmpeg/libavutil/libavutil.dylib     : ffmpeg;
 ffmpeg/libavcodec/libavcodec.dylib   : ffmpeg;
-ffmpeg/libavcore/libavcore.dylib     : ffmpeg;
 ffmpeg/libavformat/libavformat.dylib : ffmpeg;
 ffmpeg/libavformat/libavfilter.dylib : ffmpeg;
 ffmpeg/libswscale/libswscale.dylib   : ffmpeg;
@@ -116,9 +110,6 @@ $(SYSDIR)/avutil-50-$(ARCH).so: ffmpeg/libavutil/libavutil.so
 $(SYSDIR)/avcodec-52-$(ARCH).so: $(WRAPPER) ffmpeg/libavcodec/libavcodec.so
 	cp ffmpeg/libavcodec/libavcodec.so $@
 
-$(SYSDIR)/avcore-0-$(ARCH).so: $(WRAPPER) ffmpeg/libavcore/libavcore.so
-	cp ffmpeg/libavcore/libavcore.so $@
-
 $(SYSDIR)/avformat-52-$(ARCH).so: $(WRAPPER) ffmpeg/libavformat/libavformat.so
 	cp ffmpeg/libavformat/libavformat.so $@
 
@@ -133,7 +124,6 @@ $(SYSDIR)/postproc-51-$(ARCH).so: $(WRAPPER) ffmpeg/libpostproc/libpostproc.so
 
 ffmpeg/libavutil/libavutil.so     : ffmpeg;
 ffmpeg/libavcodec/libavcodec.so   : ffmpeg;
-ffmpeg/libavcore/libavcore.so     : ffmpeg;
 ffmpeg/libavformat/libavformat.so : ffmpeg;
 ffmpeg/libavfilter/libavfilter.so : ffmpeg;
 ffmpeg/libswscale/libswscale.so   : ffmpeg;
