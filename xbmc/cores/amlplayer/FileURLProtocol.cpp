@@ -29,7 +29,7 @@ int CFileURLProtocol::Open(URLContext *h, const char *filename, int flags)
 {
   //CLog::Log(LOGDEBUG, "CFileURLProtocol::Open filename(%s)", filename);
   if (flags != URL_RDONLY)
-	{
+  {
     CLog::Log(LOGDEBUG, "CFileURLProtocol::Open: Only read-only is supported");
     return -EINVAL;
   }
@@ -48,7 +48,7 @@ int CFileURLProtocol::Open(URLContext *h, const char *filename, int flags)
     return -EIO;
   }
 
-	h->priv_data = (void *)cfile;
+  h->priv_data = (void *)cfile;
 
   return 0;
 }
@@ -56,7 +56,7 @@ int CFileURLProtocol::Open(URLContext *h, const char *filename, int flags)
 //========================================================================
 int CFileURLProtocol::Read(URLContext *h, unsigned char *buf, int size)
 {
-	XFILE::CFile *cfile = (XFILE::CFile*)h->priv_data;
+  XFILE::CFile *cfile = (XFILE::CFile*)h->priv_data;
 
   int readsize = cfile->Read(buf, size);
   //CLog::Log(LOGDEBUG, "CFileURLProtocol::Read size(%d), readsize(%d)", size, readsize);
@@ -74,13 +74,13 @@ int CFileURLProtocol::Write(URLContext *h, unsigned char *buf, int size)
 //========================================================================
 int64_t CFileURLProtocol::Seek(URLContext *h, int64_t pos, int whence)
 {
-	XFILE::CFile *cfile = (XFILE::CFile*)h->priv_data;
+  XFILE::CFile *cfile = (XFILE::CFile*)h->priv_data;
 
   // seek to the end of file
   if (whence == AVSEEK_SIZE)
     pos = cfile->GetLength();
   else
-    pos = cfile->Seek(pos, whence);
+    pos = cfile->Seek(pos, whence & ~AVSEEK_FORCE);
 
   //CLog::Log(LOGDEBUG, "CFileURLProtocol::Seek2 pos(%lld), whence(%d)", pos, whence);
 
@@ -91,7 +91,7 @@ int64_t CFileURLProtocol::Seek(URLContext *h, int64_t pos, int whence)
 int CFileURLProtocol::Close(URLContext *h)
 {
   //CLog::Log(LOGDEBUG, "CFileURLProtocol::Close");
-	XFILE::CFile *cfile = (XFILE::CFile*)h->priv_data;
+  XFILE::CFile *cfile = (XFILE::CFile*)h->priv_data;
   cfile->Close();
   delete cfile;
 
