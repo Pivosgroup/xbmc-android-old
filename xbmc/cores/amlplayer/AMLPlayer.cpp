@@ -25,6 +25,7 @@
 #include "AMLPlayer.h"
 #include "Application.h"
 #include "FileItem.h"
+#include "FileURLProtocol.h"
 #include "GUIInfoManager.h"
 #include "Util.h"
 #include "cores/VideoRenderers/RenderManager.h"
@@ -215,32 +216,48 @@ bool CAMLPlayer::OpenFile(const CFileItem &file, const CPlayerOptions &options)
     m_show_mainvideo = -1;
     m_dst_rect.SetRect(0, 0, 0, 0);
 
+		static URLProtocol vfs_protocol = {
+			"vfs",
+			CFileURLProtocol::Open,
+			CFileURLProtocol::Read,
+			CFileURLProtocol::Write,
+			CFileURLProtocol::Seek,
+			CFileURLProtocol::Seek, // url_exseek, an amlogic extension.
+			CFileURLProtocol::Close,
+		};
 
-    std::string url;
-#if 0
-    CStdString    protocol = m_item.GetProtocol();
-    if (protocol == "http")
+		if (m_item.GetPath().Left(6).Equals("smb://"))
     {
-      format.mediaType = MTYPE_APP_UNKNOWN;
-      // strip user agent that we append
-      url = m_item.GetPath();
-      url = url.erase(url.rfind('|'), url.size());
-    }
-    else
-#endif
+			// the name string needs to persist 
+			static const char *smb_name = "smb";
+			vfs_protocol.name = smb_name;
+		}
+		else if (m_item.GetPath().Left(6).Equals("afp://"))
     {
-      url = m_item.GetPath();
-    }
+			// the name string needs to persist 
+			static const char *smb_name = "afp";
+			vfs_protocol.name = smb_name;
+		}
+		else if (m_item.GetPath().Left(6).Equals("nfs://"))
+    {
+			// the name string needs to persist 
+			static const char *smb_name = "nfs";
+			vfs_protocol.name = smb_name;
+		}
 
     player_init();
     printf("player init......\n");
+
+    // must be after player_init
+		av_register_protocol2(&vfs_protocol, sizeof(vfs_protocol)); 
+
 		static play_control_t  play_control;
     memset(&play_control, 0, sizeof(play_control_t));
     // if we do not register a callback,
     // then the libamplayer will free run checking status.
     player_register_update_callback(&play_control.callback_fn, &update_player_info, 1000);
     // leak file_name for now.
-    play_control.file_name = (char*)strdup(url.c_str());
+    play_control.file_name = (char*)strdup(m_item.GetPath().c_str());
     //play_control->nosound   = 1;//if disable audio...,must call this api
     play_control.video_index = -1; //MUST
     play_control.audio_index = -1; //MUST
@@ -808,6 +825,7 @@ void CAMLPlayer::ToFFRW(int iSpeed)
       break;
       default:
         // N x fast forward/rewind (I-frames)
+        // speed playback 2,4,8
         if (iSpeed > 0)
     			player_forward(m_pid,   iSpeed);
         else

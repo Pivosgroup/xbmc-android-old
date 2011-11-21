@@ -1,6 +1,7 @@
 .PHONY: compile
 
 SRCS = AMLPlayer.cpp
+SRCS+= FileURLProtocol.cpp
 
 LIB = amlplayer.a
 
