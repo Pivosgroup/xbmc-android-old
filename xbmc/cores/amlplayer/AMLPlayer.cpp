@@ -99,9 +99,9 @@ static int media_info_dump(media_info_t* minfo)
     printf("======||video index:%d\n",                        minfo->stream_info.cur_video_index);
     printf("======||video counts:%d\n",                       minfo->stream_info.total_video_num);
     printf("======||video width :%d\n",                       minfo->video_info[0]->width);
+    printf("======||video height:%d\n",                       minfo->video_info[0]->height);
     printf("======||video ratio :%d:%d\n",                    minfo->video_info[0]->aspect_ratio_num,minfo->video_info[0]->aspect_ratio_den);
     printf("======||frame_rate  :%.2f\n",                     (float)minfo->video_info[0]->frame_rate_num/minfo->video_info[0]->frame_rate_den);
-    printf("======||video height:%d\n",                       minfo->video_info[0]->height);
     printf("======||video bitrate:%d\n",                      minfo->video_info[0]->bit_rate);
     printf("======||video format:%d\n",                       minfo->video_info[0]->format);
     printf("======||video duration:%d\n",                     minfo->video_info[0]->duartion);
@@ -226,24 +226,32 @@ bool CAMLPlayer::OpenFile(const CFileItem &file, const CPlayerOptions &options)
       CFileURLProtocol::Close,
     };
 
-    if (m_item.GetPath().Left(6).Equals("smb://"))
+    CStdString url = m_item.GetPath();
+    if (url.Left(6).Equals("smb://"))
     {
       // the name string needs to persist 
       static const char *smb_name = "smb";
       vfs_protocol.name = smb_name;
     }
-    else if (m_item.GetPath().Left(6).Equals("afp://"))
+    else if (url.Left(6).Equals("afp://"))
     {
       // the name string needs to persist 
       static const char *smb_name = "afp";
       vfs_protocol.name = smb_name;
     }
-    else if (m_item.GetPath().Left(6).Equals("nfs://"))
+    else if (url.Left(6).Equals("nfs://"))
     {
       // the name string needs to persist 
       static const char *smb_name = "nfs";
       vfs_protocol.name = smb_name;
     }
+    else if (url.Left(7).Equals("http://"))
+    {
+      int pos = url.Find('|');
+      if (pos != -1)
+        url = url.erase(pos, url.size());
+    }
+    printf("CAMLPlayer::OpenFile: URL=%s\n", url.c_str());
 
     player_init();
     printf("player init......\n");
@@ -257,7 +265,7 @@ bool CAMLPlayer::OpenFile(const CFileItem &file, const CPlayerOptions &options)
     // then the libamplayer will free run checking status.
     player_register_update_callback(&play_control.callback_fn, &update_player_info, 1000);
     // leak file_name for now.
-    play_control.file_name = (char*)strdup(m_item.GetPath().c_str());
+    play_control.file_name = (char*)strdup(url.c_str());
     //play_control->nosound   = 1; // if disable audio...,must call this api
     play_control.video_index = -1; //MUST
     play_control.audio_index = -1; //MUST
@@ -905,7 +913,8 @@ void CAMLPlayer::Process()
       }
 
       // wait until video or audio format is valid
-      WaitForFormatValid(2000);
+      if (!WaitForFormatValid(2000))
+        throw "CAMLPlayer::Process: WaitForFormatValid failed";
 
       // drop CGUIDialogBusy dialog and release the hold in OpenFile.
       m_ready.Set();
@@ -1093,7 +1102,6 @@ bool CAMLPlayer::WaitForOpenMedia(int timeout_ms)
         return false;
         break;
       case PLAYER_INITOK:
-        GetStatus();
         return true;
         break;
     }
@@ -1111,8 +1119,8 @@ bool CAMLPlayer::WaitForFormatValid(int timeout_ms)
     switch(pstatus)
     {
       default:
-        Sleep(100);
-        timeout_ms -= 100;
+        Sleep(500);
+        timeout_ms -= 500;
         break;
       case PLAYER_ERROR:
       case PLAYER_EXIT:
@@ -1143,6 +1151,10 @@ bool CAMLPlayer::WaitForFormatValid(int timeout_ms)
           m_video_height= media_info.video_info[m_video_index]->height;
           m_video_fps_numerator	= media_info.video_info[m_video_index]->frame_rate_num;
           m_video_fps_denominator = media_info.video_info[m_video_index]->frame_rate_den;
+
+          // bail if we do not get a valid width/height
+          if (m_video_width == 0 || m_video_height == 0)
+            return false;
         }
 
         if (media_info.stream_info.has_audio && media_info.stream_info.total_audio_num > 0)
