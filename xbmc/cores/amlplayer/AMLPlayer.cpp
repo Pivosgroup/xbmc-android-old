@@ -247,9 +247,10 @@ bool CAMLPlayer::OpenFile(const CFileItem &file, const CPlayerOptions &options)
     }
     else if (url.Left(7).Equals("http://"))
     {
+      // strip user agent that we append
       int pos = url.Find('|');
       if (pos != -1)
-        url = url.erase(pos, url.size());
+        url = url.erase(pos-1, url.size());
     }
     printf("CAMLPlayer::OpenFile: URL=%s\n", url.c_str());
 
