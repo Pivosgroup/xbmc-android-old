@@ -88,14 +88,14 @@ static int media_info_dump(media_info_t* minfo)
   int i = 0;
   printf("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\n");
   printf("======||file size:%lld\n",                          minfo->stream_info.file_size);
-  printf("======||file type:%d\n",                            minfo->stream_info.type); 
+  printf("======||file type:%d\n",                            minfo->stream_info.type);
   printf("======||duration:%d\n",                             minfo->stream_info.duration);
   printf("======||has video track?:%s\n",                     minfo->stream_info.has_video>0?"YES!":"NO!");
-  printf("======||has audio track?:%s\n",                     minfo->stream_info.has_audio>0?"YES!":"NO!");    
+  printf("======||has audio track?:%s\n",                     minfo->stream_info.has_audio>0?"YES!":"NO!");
   printf("======||has internal subtitle?:%s\n",               minfo->stream_info.has_sub>0?"YES!":"NO!");
   printf("======||internal subtile counts:%d\n",              minfo->stream_info.total_sub_num);
   if (minfo->stream_info.has_video && minfo->stream_info.total_video_num > 0)
-  {        
+  {
     printf("======||video index:%d\n",                        minfo->stream_info.cur_video_index);
     printf("======||video counts:%d\n",                       minfo->stream_info.total_video_num);
     printf("======||video width :%d\n",                       minfo->video_info[0]->width);
@@ -121,14 +121,14 @@ static int media_info_dump(media_info_t* minfo)
       printf("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n");
       if (NULL != minfo->audio_info[i]->audio_tag)
       {
-        printf("======||audio track title:%s",                minfo->audio_info[i]->audio_tag->title!=NULL?minfo->audio_info[i]->audio_tag->title:"unknown");   
-        printf("\n======||audio track album:%s",              minfo->audio_info[i]->audio_tag->album!=NULL?minfo->audio_info[i]->audio_tag->album:"unknown"); 
+        printf("======||audio track title:%s",                minfo->audio_info[i]->audio_tag->title!=NULL?minfo->audio_info[i]->audio_tag->title:"unknown");
+        printf("\n======||audio track album:%s",              minfo->audio_info[i]->audio_tag->album!=NULL?minfo->audio_info[i]->audio_tag->album:"unknown");
         printf("\n======||audio track author:%s\n",           minfo->audio_info[i]->audio_tag->author!=NULL?minfo->audio_info[i]->audio_tag->author:"unknown");
         printf("\n======||audio track year:%s\n",             minfo->audio_info[i]->audio_tag->year!=NULL?minfo->audio_info[i]->audio_tag->year:"unknown");
-        printf("\n======||audio track comment:%s\n",          minfo->audio_info[i]->audio_tag->comment!=NULL?minfo->audio_info[i]->audio_tag->comment:"unknown"); 
+        printf("\n======||audio track comment:%s\n",          minfo->audio_info[i]->audio_tag->comment!=NULL?minfo->audio_info[i]->audio_tag->comment:"unknown");
         printf("\n======||audio track genre:%s\n",            minfo->audio_info[i]->audio_tag->genre!=NULL?minfo->audio_info[i]->audio_tag->genre:"unknown");
-        printf("\n======||audio track copyright:%s\n",        minfo->audio_info[i]->audio_tag->copyright!=NULL?minfo->audio_info[i]->audio_tag->copyright:"unknown");  
-        printf("\n======||audio track track:%d\n",            minfo->audio_info[i]->audio_tag->track);  
+        printf("\n======||audio track copyright:%s\n",        minfo->audio_info[i]->audio_tag->copyright!=NULL?minfo->audio_info[i]->audio_tag->copyright:"unknown");
+        printf("\n======||audio track track:%d\n",            minfo->audio_info[i]->audio_tag->track);
       }
     }
   }
@@ -140,13 +140,13 @@ static int media_info_dump(media_info_t* minfo)
     {
       if (0 == minfo->sub_info[i]->internal_external){
         printf("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n");
-        printf("======||internal subtitle(%d) pid:%d\n",      i, minfo->sub_info[i]->id);   
-        printf("======||internal subtitle(%d) language:%s\n", i, minfo->sub_info[i]->sub_language?minfo->sub_info[i]->sub_language:"unknown"); 
-        printf("======||internal subtitle(%d) width:%d\n",    i, minfo->sub_info[i]->width); 
-        printf("======||internal subtitle(%d) height:%d\n",   i, minfo->sub_info[i]->height); 
-        printf("======||internal subtitle(%d) resolution:%d\n", i, minfo->sub_info[i]->resolution); 
-        printf("======||internal subtitle(%d) subtitle size:%lld\n", i, minfo->sub_info[i]->subtitle_size); 
-        printf("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n");       
+        printf("======||internal subtitle(%d) pid:%d\n",      i, minfo->sub_info[i]->id);
+        printf("======||internal subtitle(%d) language:%s\n", i, minfo->sub_info[i]->sub_language?minfo->sub_info[i]->sub_language:"unknown");
+        printf("======||internal subtitle(%d) width:%d\n",    i, minfo->sub_info[i]->width);
+        printf("======||internal subtitle(%d) height:%d\n",   i, minfo->sub_info[i]->height);
+        printf("======||internal subtitle(%d) resolution:%d\n", i, minfo->sub_info[i]->resolution);
+        printf("======||internal subtitle(%d) subtitle size:%lld\n", i, minfo->sub_info[i]->subtitle_size);
+        printf("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n");
       }
     }
   }
@@ -156,7 +156,7 @@ static int media_info_dump(media_info_t* minfo)
 
 bool CAMLPlayer::m_aml_init = false;
 
-CAMLPlayer::CAMLPlayer(IPlayerCallback &callback) 
+CAMLPlayer::CAMLPlayer(IPlayerCallback &callback)
   : IPlayer(callback),
   CThread(),
   m_ready(true)
@@ -216,57 +216,57 @@ bool CAMLPlayer::OpenFile(const CFileItem &file, const CPlayerOptions &options)
     m_show_mainvideo = -1;
     m_dst_rect.SetRect(0, 0, 0, 0);
 
-		static URLProtocol vfs_protocol = {
-			"vfs",
-			CFileURLProtocol::Open,
-			CFileURLProtocol::Read,
-			CFileURLProtocol::Write,
-			CFileURLProtocol::Seek,
-			CFileURLProtocol::Seek, // url_exseek, an amlogic extension.
-			CFileURLProtocol::Close,
-		};
+    static URLProtocol vfs_protocol = {
+      "vfs",
+      CFileURLProtocol::Open,
+      CFileURLProtocol::Read,
+      CFileURLProtocol::Write,
+      CFileURLProtocol::Seek,
+      CFileURLProtocol::Seek, // url_exseek, an amlogic extension.
+      CFileURLProtocol::Close,
+    };
 
-		if (m_item.GetPath().Left(6).Equals("smb://"))
+    if (m_item.GetPath().Left(6).Equals("smb://"))
     {
-			// the name string needs to persist 
-			static const char *smb_name = "smb";
-			vfs_protocol.name = smb_name;
-		}
-		else if (m_item.GetPath().Left(6).Equals("afp://"))
+      // the name string needs to persist 
+      static const char *smb_name = "smb";
+      vfs_protocol.name = smb_name;
+    }
+    else if (m_item.GetPath().Left(6).Equals("afp://"))
     {
-			// the name string needs to persist 
-			static const char *smb_name = "afp";
-			vfs_protocol.name = smb_name;
-		}
-		else if (m_item.GetPath().Left(6).Equals("nfs://"))
+      // the name string needs to persist 
+      static const char *smb_name = "afp";
+      vfs_protocol.name = smb_name;
+    }
+    else if (m_item.GetPath().Left(6).Equals("nfs://"))
     {
-			// the name string needs to persist 
-			static const char *smb_name = "nfs";
-			vfs_protocol.name = smb_name;
-		}
+      // the name string needs to persist 
+      static const char *smb_name = "nfs";
+      vfs_protocol.name = smb_name;
+    }
 
     player_init();
     printf("player init......\n");
 
     // must be after player_init
-		av_register_protocol2(&vfs_protocol, sizeof(vfs_protocol)); 
+    av_register_protocol2(&vfs_protocol, sizeof(vfs_protocol));
 
-		static play_control_t  play_control;
+    static play_control_t  play_control;
     memset(&play_control, 0, sizeof(play_control_t));
     // if we do not register a callback,
     // then the libamplayer will free run checking status.
     player_register_update_callback(&play_control.callback_fn, &update_player_info, 1000);
     // leak file_name for now.
     play_control.file_name = (char*)strdup(m_item.GetPath().c_str());
-    //play_control->nosound   = 1;//if disable audio...,must call this api
+    //play_control->nosound   = 1; // if disable audio...,must call this api
     play_control.video_index = -1; //MUST
     play_control.audio_index = -1; //MUST
-    play_control.sub_index   = -1; //MUST 
+    play_control.sub_index   = -1; //MUST
     play_control.hassub      =  1; //enable subtitle
     play_control.t_pos       = -1;
     play_control.need_start  =  1; // if 0,you can omit player_start_play API.
-																	 // just play video/audio immediately. 
-																	 // if 1,then need call "player_start_play" API;
+                                   // just play video/audio immediately.
+                                   // if 1,then need call "player_start_play" API;
     m_pid = player_start(&play_control, 0);
     if (m_pid < 0)
     {
@@ -282,11 +282,11 @@ bool CAMLPlayer::OpenFile(const CFileItem &file, const CPlayerOptions &options)
     // create the playing thread
     m_StopPlaying = false;
     Create();
-    if(!m_ready.WaitMSec(100))
+    if (!m_ready.WaitMSec(100))
     {
       CGUIDialogBusy *dialog = (CGUIDialogBusy*)g_windowManager.GetWindow(WINDOW_DIALOG_BUSY);
       dialog->Show();
-      while(!m_ready.WaitMSec(1))
+      while (!m_ready.WaitMSec(1))
         g_windowManager.Process(false);
       dialog->Close();
     }
@@ -297,7 +297,7 @@ bool CAMLPlayer::OpenFile(const CFileItem &file, const CPlayerOptions &options)
 
     return true;
   }
-  catch(...)
+  catch (...)
   {
     CLog::Log(LOGERROR, "%s - Exception thrown on open", __FUNCTION__);
     return false;
@@ -314,7 +314,7 @@ bool CAMLPlayer::CloseFile()
   // since this main thread cleans up all other resources and threads
   // we are done after the StopThread call
   StopThread();
-  
+
   CLog::Log(LOGDEBUG, "CAMLPlayer: finished waiting");
   g_renderManager.UnInit();
 
@@ -337,7 +337,7 @@ void CAMLPlayer::Pause()
   if (m_paused)
     player_resume(m_pid);
   else
-    player_pause(m_pid);                
+    player_pause(m_pid);
 
   m_paused = !m_paused;
 }
@@ -429,7 +429,7 @@ void CAMLPlayer::Seek(bool bPlus, bool bLargeStep)
 
   if (seek_ms <= 0)
     seek_ms = 100;
-  
+
   if (seek_ms > m_duration_ms)
     seek_ms = m_duration_ms;
 
@@ -462,7 +462,7 @@ float CAMLPlayer::GetPercentage()
 
 void CAMLPlayer::SetVolume(long nVolume)
 {
-	CLog::Log(LOGDEBUG, "CAMLPlayer::SetVolume(%ld)", nVolume);
+  CLog::Log(LOGDEBUG, "CAMLPlayer::SetVolume(%ld)", nVolume);
   CSingleLock lock(m_aml_csection);
   // nVolume is a milliBels from -6000 (-60dB or mute) to 0 (0dB or full volume)
   // 0db is represented by Volume = 0x10000000
@@ -470,13 +470,13 @@ void CAMLPlayer::SetVolume(long nVolume)
   // Maximum gain is 0xFFFFFFFF ~=24db
   //uint32_t volume = (1.0f + (nVolume / 6000.0f)) * (float)0x10000000;
   if (check_pid_valid(m_pid))
-	{
-		//int min, max;
-		//float volume = 
-		// int audio_set_mute(m_pid, int mute_on);
-		//audio_get_volume_range(m_pid, &min, &max)
-		//audio_set_volume(m_pid, volume);
-	}
+  {
+    //int min, max;
+    //float volume =
+    // int audio_set_mute(m_pid, int mute_on);
+    //audio_get_volume_range(m_pid, &min, &max)
+    //audio_set_volume(m_pid, volume);
+  }
 }
 
 void CAMLPlayer::GetAudioInfo(CStdString &strAudioInfo)
@@ -508,7 +508,7 @@ int CAMLPlayer::GetAudioStreamCount()
 int CAMLPlayer::GetAudioStream()
 {
   //CLog::Log(LOGDEBUG, "CAMLPlayer::GetAudioStream");
-	return m_audio_index;
+  return m_audio_index;
 }
 
 void CAMLPlayer::GetAudioStreamName(int iStream, CStdString &strStreamName)
@@ -543,13 +543,13 @@ float CAMLPlayer::GetSubTitleDelay()
 int CAMLPlayer::GetSubtitleCount()
 {
   //CLog::Log(LOGDEBUG, "CAMLPlayer::GetSubtitleCount");
-	return m_subtitle_count;
+  return m_subtitle_count;
 }
 
 int CAMLPlayer::GetSubtitle()
 {
   //CLog::Log(LOGDEBUG, "CAMLPlayer::GetSubtitle");
-	return m_subtitle_index;
+  return m_subtitle_index;
 }
 
 void CAMLPlayer::GetSubtitleName(int iStream, CStdString &strStreamName)
@@ -725,7 +725,7 @@ __int64 CAMLPlayer::GetTime()
 
 int CAMLPlayer::GetTotalTime()
 {
-	return m_duration_ms / 1000;
+  return m_duration_ms / 1000;
 }
 
 int CAMLPlayer::GetAudioBitrate()
@@ -821,16 +821,16 @@ void CAMLPlayer::ToFFRW(int iSpeed)
     {
       // regular playback
       case  0:
-    			player_forward(m_pid, 0);
-      break;
+        player_forward(m_pid, 0);
+        break;
       default:
         // N x fast forward/rewind (I-frames)
         // speed playback 2,4,8
         if (iSpeed > 0)
-    			player_forward(m_pid,   iSpeed);
+          player_forward(m_pid,   iSpeed);
         else
-    			player_backward(m_pid, -iSpeed);
-      break;
+          player_backward(m_pid, -iSpeed);
+        break;
     }
 
     m_speed = iSpeed;
@@ -870,7 +870,7 @@ void CAMLPlayer::Process()
     if (WaitForOpenMedia(30000))
     {
       // start the playback.
-			int res = player_start_play(m_pid);
+      int res = player_start_play(m_pid);
       if (res != PLAYER_SUCCESS)
         throw "CAMLPlayer::Process:player_start_play() failed";
     }
@@ -892,17 +892,17 @@ void CAMLPlayer::Process()
       m_callback.OnPlayBackSpeedChanged(m_speed);
 
       // get our initial status.
-			GetStatus();
+      GetStatus();
 
       // restore system volume setting.
       SetVolume(g_settings.m_nVolumeLevel);
 
       // starttime has units of seconds
       if (m_options.starttime > 0)
-			{
+      {
         SeekTime(m_options.starttime * 1000);
         WaitForPlaying(1000);
-			}
+      }
 
       // wait until video or audio format is valid
       WaitForFormatValid(2000);
@@ -956,7 +956,6 @@ void CAMLPlayer::Process()
             printf("CAMLPlayer::Process: %s\n", player_status2str(pstatus));
             // player is parsing file, decoder not running
             break;
-          
           case PLAYER_RUNNING:
             GetStatus();
             // playback status, decoder is running
@@ -1023,7 +1022,7 @@ void CAMLPlayer::ShowMainVideo(bool show)
 {
   if (m_show_mainvideo == show)
     return;
-  
+
   set_sysfs_int("/sys/class/video/disable_video", show ? 0:1);
 
   m_show_mainvideo = show;
@@ -1033,20 +1032,20 @@ bool CAMLPlayer::WaitForStopped(int timeout_ms)
 {
   while (!m_bStop && (timeout_ms > 0))
   {
-		player_status pstatus = player_get_state(m_pid);
-		printf("CAMLPlayer::WaitForStopped: %s\n", player_status2str(pstatus));
-		switch(pstatus)
-		{
-			default:
-				Sleep(100);
-				timeout_ms -= 100;
-				break;
-			case PLAYER_PLAYEND:
-			case PLAYER_STOPED:
-			case PLAYER_EXIT:
+    player_status pstatus = player_get_state(m_pid);
+    printf("CAMLPlayer::WaitForStopped: %s\n", player_status2str(pstatus));
+    switch(pstatus)
+    {
+      default:
+        Sleep(100);
+        timeout_ms -= 100;
+        break;
+      case PLAYER_PLAYEND:
+      case PLAYER_STOPED:
+      case PLAYER_EXIT:
         return true;
-				break;
-		}
+        break;
+    }
   }
 
   return false;
@@ -1056,23 +1055,24 @@ bool CAMLPlayer::WaitForPlaying(int timeout_ms)
 {
   while (!m_bStop && (timeout_ms > 0))
   {
-		player_status pstatus = player_get_state(m_pid);
-		printf("CAMLPlayer::WaitForPlaying: %s\n", player_status2str(pstatus));
-		switch(pstatus)
-		{
-			default:
-				Sleep(500);
-				timeout_ms -= 500;
-				break;
+    player_status pstatus = player_get_state(m_pid);
+    printf("CAMLPlayer::WaitForPlaying: %s\n", player_status2str(pstatus));
+    switch(pstatus)
+    {
+      default:
+        Sleep(500);
+        timeout_ms -= 500;
+        break;
       case PLAYER_ERROR:
-			case PLAYER_EXIT:
+      case PLAYER_EXIT:
         return false;
-				break;
-			case PLAYER_RUNNING:
+        break;
+      case PLAYER_RUNNING:
         return true;
-				break;
-		}
-	}
+        break;
+    }
+  }
+
   return false;
 }
 
@@ -1080,23 +1080,23 @@ bool CAMLPlayer::WaitForOpenMedia(int timeout_ms)
 {
   while (!m_bStop && (timeout_ms > 0))
   {
-		player_status pstatus = player_get_state(m_pid);
-		printf("CAMLPlayer::WaitForOpenMedia: %s\n", player_status2str(pstatus));
-		switch(pstatus)
-		{
-			default:
-				Sleep(500);
-				timeout_ms -= 500;
-				break;
+    player_status pstatus = player_get_state(m_pid);
+    printf("CAMLPlayer::WaitForOpenMedia: %s\n", player_status2str(pstatus));
+    switch(pstatus)
+      {
+        default:
+          Sleep(500);
+          timeout_ms -= 500;
+          break;
       case PLAYER_ERROR:
-			case PLAYER_EXIT:
+      case PLAYER_EXIT:
         return false;
-				break;
-			case PLAYER_INITOK:
+        break;
+      case PLAYER_INITOK:
         GetStatus();
         return true;
-				break;
-		}
+        break;
+    }
   }
 
   return false;
@@ -1106,27 +1106,27 @@ bool CAMLPlayer::WaitForFormatValid(int timeout_ms)
 {
   while (!m_bStop && (timeout_ms > 0))
   {
-		player_status pstatus = player_get_state(m_pid);
-		printf("CAMLPlayer::WaitForFormatValid: %s\n", player_status2str(pstatus));
-		switch(pstatus)
-		{
-			default:
-				Sleep(100);
-				timeout_ms -= 100;
-				break;
+    player_status pstatus = player_get_state(m_pid);
+    printf("CAMLPlayer::WaitForFormatValid: %s\n", player_status2str(pstatus));
+    switch(pstatus)
+    {
+      default:
+        Sleep(100);
+        timeout_ms -= 100;
+        break;
       case PLAYER_ERROR:
-			case PLAYER_EXIT:
+      case PLAYER_EXIT:
         return false;
-				break;
-			case PLAYER_RUNNING:
-        media_info_t media_info;	
+        break;
+      case PLAYER_RUNNING:
+        media_info_t media_info;
         int res = player_get_media_info(m_pid, &media_info);
         if (res != PLAYER_SUCCESS)
           return false;
 
         media_info_dump(&media_info);
 
-        // m_video_index, m_audio_index, m_subtitle_index might be -1 eventhough 
+        // m_video_index, m_audio_index, m_subtitle_index might be -1 eventhough
         // total_video_xxx is > 0, not sure why, they should be set to zero or
         // some other sensible value.
         printf("CAMLPlayer::WaitForFormatValid: m_video_index(%d), m_audio_index(%d), m_subtitle_index(%d)\n",
@@ -1135,34 +1135,34 @@ bool CAMLPlayer::WaitForFormatValid(int timeout_ms)
           media_info.stream_info.cur_sub_index);
         if (media_info.stream_info.has_video && media_info.stream_info.total_video_num > 0)
         {
-          m_video_index						= media_info.stream_info.cur_video_index;
-          m_video_count						= media_info.stream_info.total_video_num;
+          m_video_index	= media_info.stream_info.cur_video_index;
+          m_video_count	= media_info.stream_info.total_video_num;
           if (m_video_index != 0)
             m_video_index = 0;
-          m_video_width						= media_info.video_info[m_video_index]->width;
-          m_video_height					= media_info.video_info[m_video_index]->height;
-          m_video_fps_numerator		= media_info.video_info[m_video_index]->frame_rate_num;
+          m_video_width	= media_info.video_info[m_video_index]->width;
+          m_video_height= media_info.video_info[m_video_index]->height;
+          m_video_fps_numerator	= media_info.video_info[m_video_index]->frame_rate_num;
           m_video_fps_denominator = media_info.video_info[m_video_index]->frame_rate_den;
         }
 
         if (media_info.stream_info.has_audio && media_info.stream_info.total_audio_num > 0)
         {
-          m_audio_index						= media_info.stream_info.cur_audio_index;
+          m_audio_index	= media_info.stream_info.cur_audio_index;
           if (m_audio_index != 0)
             m_audio_index = 0;
-          m_audio_count						= media_info.stream_info.total_audio_num;
+          m_audio_count	= media_info.stream_info.total_audio_num;
         }
 
         if (media_info.stream_info.has_sub && media_info.stream_info.total_sub_num > 0)
         {
-          m_subtitle_index				= media_info.stream_info.cur_sub_index;
+          m_subtitle_index = media_info.stream_info.cur_sub_index;
           if (m_subtitle_index != 0)
             m_subtitle_index = 0;
-          m_subtitle_count				= media_info.stream_info.total_sub_num;
+          m_subtitle_count = media_info.stream_info.total_sub_num;
         }
         return true;
-				break;
-		}
+        break;
+    }
   }
 
   return false;
@@ -1175,17 +1175,17 @@ bool CAMLPlayer::GetStatus()
   if (!check_pid_valid(m_pid))
     return false;
 
-	player_info_t player_info;
-	int res = player_get_play_info(m_pid, &player_info);
-	if (res != PLAYER_SUCCESS)
-		return false;
+  player_info_t player_info;
+  int res = player_get_play_info(m_pid, &player_info);
+  if (res != PLAYER_SUCCESS)
+    return false;
 
-	m_elapsed_ms  = player_info.current_ms;
+  m_elapsed_ms  = player_info.current_ms;
   m_duration_ms = 1000 * player_info.full_time;
   //printf("CAMLPlayer::GetStatus: audio_bufferlevel(%f), video_bufferlevel(%f), bufed_time(%d), bufed_pos(%lld)\n",
   //  player_info.audio_bufferlevel, player_info.video_bufferlevel, player_info.bufed_time, player_info.bufed_pos);
-		
-	return true;
+
+  return true;
 }
 
 #endif

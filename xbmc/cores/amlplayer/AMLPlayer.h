@@ -124,14 +124,14 @@ public:
   //returns a state that is needed for resuming from a specific time
   virtual CStdString GetPlayerState()                             {return "";};
   virtual bool  SetPlayerState(CStdString state)                  {return false;};
-  
+
   virtual CStdString GetPlayingTitle()                            {return "";};
-  
+
 protected:
   virtual void  OnStartup();
   virtual void  OnExit();
   virtual void  Process();
-  
+
 private:
   int           GetVideoStreamCount();
   void          ShowMainVideo(bool show);
@@ -139,7 +139,7 @@ private:
   bool          WaitForPlaying(int timeout_ms);
   bool          WaitForOpenMedia(int timeout_ms);
   bool          WaitForFormatValid(int timeout_ms);
-	bool					GetStatus();
+  bool          GetStatus();
 
   int                     m_speed;
   bool                    m_paused;
@@ -147,7 +147,7 @@ private:
   CEvent                  m_ready;
   CFileItem               m_item;
   CPlayerOptions          m_options;
-  
+
   int64_t                 m_elapsed_ms;
   int64_t                 m_duration_ms;
 
@@ -169,7 +169,7 @@ private:
   int                     m_subtitle_count;
   bool                    m_subtitle_show;
   int                     m_subtitle_delay;
-  
+
   int                     m_chapter_index;
   int                     m_chapter_count;
   struct chapters
@@ -181,7 +181,7 @@ private:
   int                     m_show_mainvideo;
   CRect                   m_dst_rect;
   int                     m_view_mode;
-  
+
   CCriticalSection        m_aml_csection;
   static bool             m_aml_init;
   int                     m_pid;
