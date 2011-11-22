@@ -276,10 +276,10 @@ bool CAMLPlayer::OpenFile(const CFileItem &file, const CPlayerOptions &options)
     play_control.need_start  =  1; // if 0,you can omit player_start_play API.
                                    // just play video/audio immediately.
                                    // if 1,then need call "player_start_play" API;
-    play_control.auto_buffing_enable = 1;
-    play_control.buffing_min        = 0.2;
-    play_control.buffing_middle     = 0.5;
-    play_control.buffing_max        = 0.8;
+    //play_control.auto_buffing_enable = 1;
+    //play_control.buffing_min        = 0.2;
+    //play_control.buffing_middle     = 0.5;
+    //play_control.buffing_max        = 0.8;
     //play_control.byteiobufsize      =; // maps to av_open_input_file buffer size
     //play_control.loopbufsize        =;
     //play_control.enable_rw_on_pause =;
