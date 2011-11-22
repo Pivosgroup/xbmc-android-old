@@ -227,30 +227,30 @@ bool CAMLPlayer::OpenFile(const CFileItem &file, const CPlayerOptions &options)
     };
 
     CStdString url = m_item.GetPath();
-    if (url.Left(6).Equals("smb://"))
+    if (url.Left(strlen("smb://")).Equals("smb://"))
     {
       // the name string needs to persist 
       static const char *smb_name = "smb";
       vfs_protocol.name = smb_name;
     }
-    else if (url.Left(6).Equals("afp://"))
+    else if (url.Left(strlen("afp://")).Equals("afp://"))
     {
       // the name string needs to persist 
       static const char *smb_name = "afp";
       vfs_protocol.name = smb_name;
     }
-    else if (url.Left(6).Equals("nfs://"))
+    else if (url.Left(strlen("nfs://")).Equals("nfs://"))
     {
       // the name string needs to persist 
       static const char *smb_name = "nfs";
       vfs_protocol.name = smb_name;
     }
-    else if (url.Left(7).Equals("http://"))
+    else if (url.Left(strlen("http://")).Equals("http://"))
     {
-      // strip user agent that we append
-      int pos = url.Find('|');
-      if (pos != -1)
-        url = url.erase(pos-1, url.size());
+      // the name string needs to persist 
+      static const char *http_name = "xb-http";
+      vfs_protocol.name = http_name;
+      url = "xb-" + url;
     }
     printf("CAMLPlayer::OpenFile: URL=%s\n", url.c_str());
 
@@ -276,6 +276,13 @@ bool CAMLPlayer::OpenFile(const CFileItem &file, const CPlayerOptions &options)
     play_control.need_start  =  1; // if 0,you can omit player_start_play API.
                                    // just play video/audio immediately.
                                    // if 1,then need call "player_start_play" API;
+    play_control.auto_buffing_enable = 1;
+    play_control.buffing_min        = 0.2;
+    play_control.buffing_middle     = 0.5;
+    play_control.buffing_max        = 0.8;
+    //play_control.byteiobufsize      =; // maps to av_open_input_file buffer size
+    //play_control.loopbufsize        =;
+    //play_control.enable_rw_on_pause =;
     m_pid = player_start(&play_control, 0);
     if (m_pid < 0)
     {
@@ -1020,6 +1027,7 @@ void CAMLPlayer::Process()
   // we are done, hide the mainvideo layer.
   ShowMainVideo(false);
   m_ready.Set();
+  printf("CAMLPlayer::Process exit\n");
 }
 
 int CAMLPlayer::GetVideoStreamCount()

@@ -27,22 +27,27 @@
 //========================================================================
 int CFileURLProtocol::Open(URLContext *h, const char *filename, int flags)
 {
-  //CLog::Log(LOGDEBUG, "CFileURLProtocol::Open filename(%s)", filename);
   if (flags != URL_RDONLY)
   {
     CLog::Log(LOGDEBUG, "CFileURLProtocol::Open: Only read-only is supported");
     return -EINVAL;
   }
 
+  CStdString url = filename;
+  if (url.Left(strlen("xb-http://")).Equals("xb-http://"))
+  {
+    url = url.Right(url.size() - strlen("xb-"));
+  }
+  CLog::Log(LOGDEBUG, "CFileURLProtocol::Open filename2(%s)", url.c_str());
   // open the file, always in read mode, calc bitrate
   unsigned int cflags = READ_BITRATE;
   XFILE::CFile *cfile = new XFILE::CFile();
 
-  if (CFileItem(filename, false).IsInternetStream())
+  if (CFileItem(url, false).IsInternetStream())
     cflags |= READ_CACHED;
 
   // open file in binary mode
-  if (!cfile->Open(filename, cflags))
+  if (!cfile->Open(url, cflags))
   {
     delete cfile;
     return -EIO;
