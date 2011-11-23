@@ -11,6 +11,8 @@ ARCHIVE=$(LIBNAME)-$(VERSION).tar.gz
 CONFIGURE=./configure --prefix=$(PREFIX) --host=$(HOST) \
   --with-jpeg8
 
+CFLAGS+=-O3
+
 LIBDYLIB=$(SOURCE)/.libs/lib$(LIBNAME).so
 
 CLEAN_FILES=$(ARCHIVE) $(SOURCE)
