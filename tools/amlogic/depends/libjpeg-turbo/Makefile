@@ -11,7 +11,7 @@ ARCHIVE=$(LIBNAME)-$(VERSION).tar.gz
 CONFIGURE=./configure --prefix=$(PREFIX) --host=$(HOST) \
   --with-jpeg8
 
-CFLAGS+=-O3
+CFLAGS+=-O3 -mfloat-abi=softfp
 
 LIBDYLIB=$(SOURCE)/.libs/lib$(LIBNAME).so
 
