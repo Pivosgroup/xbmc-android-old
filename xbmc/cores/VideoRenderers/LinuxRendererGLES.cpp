@@ -416,7 +416,6 @@ void CLinuxRendererGLES::RenderUpdate(bool clear, DWORD flags, DWORD alpha)
     glClear(GL_COLOR_BUFFER_BIT);
 
     g_graphicsContext.EndPaint();
-    glFinish();
     return;
   }
 
@@ -482,9 +481,6 @@ void CLinuxRendererGLES::RenderUpdate(bool clear, DWORD flags, DWORD alpha)
   glEnable(GL_BLEND);
 
   g_graphicsContext.EndPaint();
-#if !defined(__APPLE__)
-  glFinish();
-#endif
 }
 
 void CLinuxRendererGLES::FlipPage(int source)
@@ -619,7 +615,7 @@ void CLinuxRendererGLES::LoadShaders(int field)
         m_renderMethod = RENDER_CVREF;
         break;
       }
-      #if defined(__APPLE__) && defined(__arm__)
+      #if (defined(TARGET_AMLOGIC) || defined(__APPLE__)) && defined(__arm__)
       else if (CONF_FLAGS_FORMAT_MASK(m_iFlags) == CONF_FLAGS_FORMAT_YV12)
       {
         CLog::Log(LOGNOTICE, "GL: Using software color conversion/RGBA render method");
