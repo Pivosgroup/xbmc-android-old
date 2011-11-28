@@ -36,7 +36,7 @@
 class CImageLoader : public CJob
 {
 public:
-  CImageLoader(const CStdString &path);
+  CImageLoader(const CStdString &path, float width = 0, float height = 0);
   virtual ~CImageLoader();
 
   /*!
@@ -46,6 +46,8 @@ public:
 
   CStdString    m_path; ///< path of image to load
   CBaseTexture *m_texture; ///< Texture object to load the image into \sa CBaseTexture.
+  float           m_width;
+  float           m_height;
 };
 
 /*!
@@ -86,7 +88,7 @@ public:
    \return true if the image exists, else false.
    \sa CGUITextureArray and CGUITexture
    */
-  bool GetImage(const CStdString &path, CTextureArray &texture, bool firstRequest);
+  bool GetImage(const CStdString &path, CTextureArray &texture, bool firstRequest, float width = 0, float height = 0);
 
   /*!
    \brief Request a texture to be unloaded.
@@ -136,7 +138,7 @@ private:
     unsigned int m_timeToDelete;
   };
 
-  void QueueImage(const CStdString &path);
+  void QueueImage(const CStdString &path, float width = 0, float height = 0);
 
   std::vector< std::pair<unsigned int, CLargeTexture *> > m_queued;
   std::vector<CLargeTexture *> m_allocated;

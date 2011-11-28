@@ -35,10 +35,12 @@
 using namespace std;
 
 
-CImageLoader::CImageLoader(const CStdString &path)
+CImageLoader::CImageLoader(const CStdString &path, float width, float height)
 {
   m_path = path;
   m_texture = NULL;
+  m_width = width;
+  m_height = height;
 }
 
 CImageLoader::~CImageLoader()
@@ -72,7 +74,7 @@ bool CImageLoader::DoWork()
  
   m_texture = new CTexture();
   unsigned int start = XbmcThreads::SystemClockMillis();
-  if (!m_texture->LoadFromFile(loadPath, min(g_graphicsContext.GetWidth(), 2048), min(g_graphicsContext.GetHeight(), 1080), g_guiSettings.GetBool("pictures.useexifrotation")))
+  if (!m_texture->LoadFromFile(loadPath, m_width, m_height, g_guiSettings.GetBool("pictures.useexifrotation")))
   {
     delete m_texture;
     m_texture = NULL;
@@ -158,7 +160,7 @@ void CGUILargeTextureManager::CleanupUnusedImages(bool immediately)
 
 // if available, increment reference count, and return the image.
 // else, add to the queue list if appropriate.
-bool CGUILargeTextureManager::GetImage(const CStdString &path, CTextureArray &texture, bool firstRequest)
+bool CGUILargeTextureManager::GetImage(const CStdString &path, CTextureArray &texture, bool firstRequest, float width, float height)
 {
   // note: max size to load images: 2048x1024? (8MB)
   CSingleLock lock(m_listSection);
@@ -170,12 +172,12 @@ bool CGUILargeTextureManager::GetImage(const CStdString &path, CTextureArray &te
       if (firstRequest)
         image->AddRef();
       texture = image->GetTexture();
-      return texture.size() > 0;
+      return (texture.size() > 0 && texture.m_width >= (int)width && texture.m_height >= (int)height);
     }
   }
 
   if (firstRequest)
-    QueueImage(path);
+    QueueImage(path, width, height);
 
   return true;
 }
@@ -208,7 +210,7 @@ void CGUILargeTextureManager::ReleaseImage(const CStdString &path, bool immediat
 }
 
 // queue the image, and start the background loader if necessary
-void CGUILargeTextureManager::QueueImage(const CStdString &path)
+void CGUILargeTextureManager::QueueImage(const CStdString &path, float width, float height)
 {
   CSingleLock lock(m_listSection);
   for (queueIterator it = m_queued.begin(); it != m_queued.end(); ++it)
@@ -223,7 +225,7 @@ void CGUILargeTextureManager::QueueImage(const CStdString &path)
 
   // queue the item
   CLargeTexture *image = new CLargeTexture(path);
-  unsigned int jobID = CJobManager::GetInstance().AddJob(new CImageLoader(path), this, CJob::PRIORITY_NORMAL);
+  unsigned int jobID = CJobManager::GetInstance().AddJob(new CImageLoader(path, width, height), this, CJob::PRIORITY_NORMAL);
   m_queued.push_back(make_pair(jobID, image));
 }
 
