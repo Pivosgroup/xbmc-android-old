@@ -132,7 +132,7 @@ void CGUILargeTextureManager::CLargeTexture::SetTexture(CBaseTexture* texture)
 {
   assert(!m_texture.size());
   if (texture)
-    m_texture.Set(texture, texture->GetWidth(), texture->GetHeight());
+    m_texture.Set(texture, texture->GetWidth(), texture->GetHeight(), texture->GetOriginalImageWidth(), texture->GetOriginalImageHeight());
 }
 
 CGUILargeTextureManager::CGUILargeTextureManager()
@@ -172,7 +172,17 @@ bool CGUILargeTextureManager::GetImage(const CStdString &path, CTextureArray &te
       if (firstRequest)
         image->AddRef();
       texture = image->GetTexture();
-      return (texture.size() > 0 && texture.m_width >= (int)width && texture.m_height >= (int)height);
+      if (texture.size() > 0)
+        {
+        // Our image may have been scaled to fit a control. If it's too small we'll need to create a new one.
+        // If the current image is bigger than the required size, use it. If it's the full-size image, use it.
+        // Else, return false signaling that we need a new GetImage.
+          if (texture.m_width >= (int)width && texture.m_height >= (int)height)
+            return true;
+          if (texture.m_width == texture.m_originalWidth && texture.m_height == texture.m_originalHeight)
+            return true;
+          return false;
+        }
     }
   }
 

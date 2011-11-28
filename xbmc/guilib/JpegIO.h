@@ -36,7 +36,7 @@ class CJpegIO
 public:
   CJpegIO();
   ~CJpegIO();
-  bool           Open(const CStdString& m_texturePath,  unsigned int m_minx=0, unsigned int m_miny=0);
+  bool           Open(const CStdString& m_texturePath,  unsigned int m_minx=0, unsigned int m_miny=0, unsigned int *original_width=NULL, unsigned int *original_height=NULL);
   bool           Decode(const unsigned char *pixels, unsigned int pitch, unsigned int format);
   void           Close();
 
@@ -64,6 +64,8 @@ protected:
   unsigned int   m_width;
   unsigned int   m_height;
   unsigned int   m_orientation;
+  unsigned int   m_original_width;
+  unsigned int   m_original_height;
 };
 
 #endif

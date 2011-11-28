@@ -94,11 +94,13 @@ void CTextureArray::Add(CBaseTexture *texture, int delay)
   m_texCoordsArePixels = false;
 }
 
-void CTextureArray::Set(CBaseTexture *texture, int width, int height)
+void CTextureArray::Set(CBaseTexture *texture, int width, int height, int originalWidth, int originalHeight)
 {
   assert(!m_textures.size()); // don't try and set a texture if we already have one!
   m_width = width;
   m_height = height;
+  m_originalWidth = originalWidth;
+  m_originalHeight = originalHeight;
   m_orientation = texture ? texture->GetOrientation() : 0;
   Add(texture, 100);
 }
