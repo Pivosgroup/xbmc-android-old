@@ -271,7 +271,7 @@ bool CAMLPlayer::OpenFile(const CFileItem &file, const CPlayerOptions &options)
     play_control.video_index = -1; //MUST
     play_control.audio_index = -1; //MUST
     play_control.sub_index   = -1; //MUST
-    play_control.hassub      =  1; //enable subtitle
+    play_control.hassub      =  0; //disable subtitles, they are borked
     play_control.t_pos       = -1;
     play_control.need_start  =  1; // if 0,you can omit player_start_play API.
                                    // just play video/audio immediately.
@@ -406,7 +406,7 @@ void CAMLPlayer::Seek(bool bPlus, bool bLargeStep)
   }
 
   // force updated to m_elapsed_ms, m_duration_ms.
-  GetTotalTime();
+  GetStatus();
 
   int64_t seek_ms;
   if (g_advancedSettings.m_videoUseTimeSeeking)
@@ -451,7 +451,7 @@ void CAMLPlayer::Seek(bool bPlus, bool bLargeStep)
 
   // do seek here
   if (check_pid_valid(m_pid))
-    player_timesearch(m_pid, seek_ms/1000);
+    player_timesearch(m_pid, (0.5 + seek_ms/1000.0));
 }
 
 bool CAMLPlayer::SeekScene(bool bPlus)
@@ -469,7 +469,7 @@ void CAMLPlayer::SeekPercentage(float fPercent)
 
 float CAMLPlayer::GetPercentage()
 {
-  GetTotalTime();
+  GetStatus();
   if (m_duration_ms)
     return 100.0f * (float)m_elapsed_ms/(float)m_duration_ms;
   else
@@ -640,6 +640,11 @@ void CAMLPlayer::SetVideoRect(const CRect &SrcRect, const CRect &DestRect)
 
   ShowMainVideo(false);
 
+  CStdString rectangle;
+  rectangle.Format("%i,%i,%i,%i",
+    (int)m_dst_rect.x1, (int)m_dst_rect.y1,
+    (int)m_dst_rect.Width(), (int)m_dst_rect.Height());
+  printf("CAMLPlayer::SetVideoRect:m_dst_rect(%s)\n", rectangle.c_str());
   // some odd scaling going on, we do not quite get what we expect
   //set_video_axis(m_dst_rect.x1, m_dst_rect.y1, m_dst_rect.Width(), m_dst_rect.Height());
   set_video_axis(0, 0, 0, 0);
@@ -724,14 +729,12 @@ float CAMLPlayer::GetActualFPS()
 void CAMLPlayer::SeekTime(__int64 seek_ms)
 {
   CSingleLock lock(m_aml_csection);
-  // bugfix, dcchd takes forever to seek to 0 and play
-  //  seek to 1 second and play is immediate.
   if (seek_ms <= 0)
     seek_ms = 100;
 
   // seek here
   if (check_pid_valid(m_pid))
-    player_timesearch(m_pid, seek_ms/1000);
+    player_timesearch(m_pid, (0.5 + seek_ms/1000.0));
 }
 
 __int64 CAMLPlayer::GetTime()
