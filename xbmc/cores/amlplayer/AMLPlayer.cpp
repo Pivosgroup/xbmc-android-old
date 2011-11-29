@@ -39,15 +39,10 @@
 #include "utils/log.h"
 #include "utils/TimeUtils.h"
 #include "utils/URIUtils.h"
+#include "utils/LangCodeExpander.h"
 
 #include <sstream>
 #include <iomanip>
-
-// amlogic libplayer
-extern "C"
-{
-#include <player.h>
-}
 
 static int set_video_axis(int x, int y, int width, int height)
 {
@@ -385,6 +380,9 @@ bool CAMLPlayer::CanSeek()
 
 void CAMLPlayer::Seek(bool bPlus, bool bLargeStep)
 {
+  // force updated to m_elapsed_ms, m_duration_ms.
+  GetStatus();
+
   CSingleLock lock(m_aml_csection);
 
   // try chapter seeking first, chapter_index is ones based.
@@ -398,15 +396,12 @@ void CAMLPlayer::Seek(bool bPlus, bool bLargeStep)
       return;
     }
     // seek to previous chapter
-    if (!bPlus && chapter_index > 1)
+    if (!bPlus && chapter_index)
     {
       SeekChapter(chapter_index - 1);
       return;
     }
   }
-
-  // force updated to m_elapsed_ms, m_duration_ms.
-  GetStatus();
 
   int64_t seek_ms;
   if (g_advancedSettings.m_videoUseTimeSeeking)
@@ -451,6 +446,7 @@ void CAMLPlayer::Seek(bool bPlus, bool bLargeStep)
 
   // do seek here
   SeekTime(seek_ms);
+  m_callback.OnPlayBackSeek((int)seek_ms, (int)(seek_ms - m_elapsed_ms));
 }
 
 bool CAMLPlayer::SeekScene(bool bPlus)
@@ -538,8 +534,21 @@ void CAMLPlayer::GetAudioStreamName(int iStream, CStdString &strStreamName)
   //CLog::Log(LOGDEBUG, "CAMLPlayer::GetAudioStreamName");
   CSingleLock lock(m_aml_csection);
 
+  strStreamName.Format("Undefined");
+
+  if(iStream > (int)m_audio_streams.size() || iStream < 0)
+    return;
+
   // strStreamName.Format("%s", res.value.streamInfo.name);
   strStreamName.Format("Undefined");
+
+  if( m_audio_streams[iStream]->audio_language[0] != 0)
+  {
+    CStdString name;
+    g_LangCodeExpander.Lookup( name, m_audio_streams[iStream]->audio_language );
+    strStreamName = name;
+  }
+
 }
  
 void CAMLPlayer::SetAudioStream(int SetAudioStream)
@@ -682,17 +691,20 @@ int CAMLPlayer::GetChapterCount()
 
 int CAMLPlayer::GetChapter()
 {
-  // returns a one based value.
-  int chapter_index = m_chapter_index + 1;
-  //CLog::Log(LOGDEBUG, "CAMLPlayer::GetChapter:chapter_index(%d)", chapter_index);
-  return chapter_index;
+  GetStatus();
+
+  for(int i = 0; i < m_chapter_count - 1; i++)
+  {
+    if(m_elapsed_ms >= m_chapters[i].seekto_ms && m_elapsed_ms < m_chapters[i + 1].seekto_ms)
+      return i + 1;
+  }
+  return 0;
 }
 
 void CAMLPlayer::GetChapterName(CStdString& strChapterName)
 {
   if (m_chapter_count)
-    strChapterName = m_chapters[m_chapter_index].name;
-  //CLog::Log(LOGDEBUG, "CAMLPlayer::GetChapterName:strChapterName(%s)", strChapterName.c_str());
+    strChapterName = m_chapters[GetChapter() - 1].name;
 }
 
 int CAMLPlayer::SeekChapter(int chapter_index)
@@ -700,13 +712,12 @@ int CAMLPlayer::SeekChapter(int chapter_index)
   CSingleLock lock(m_aml_csection);
 
   // chapter_index is a one based value.
-  int chapter_count = GetChapterCount();
-  if (chapter_count > 0)
+  if (m_chapter_count > 1)
   {
-    if (chapter_index < 1)
-      chapter_index = 1;
-    if (chapter_index > chapter_count)
-      chapter_index = chapter_count;
+    if (chapter_index < 0)
+      chapter_index = 0;
+    if (chapter_index > m_chapter_count)
+      return 0;
 
     // time units are seconds,
     // so we add 1000ms to get into the chapter.
@@ -718,12 +729,13 @@ int CAMLPlayer::SeekChapter(int chapter_index)
       seek_ms = 1000;
 
     // seek to chapter here
-    m_callback.OnPlayBackSeekChapter(chapter_index);
+    SeekTime(seek_ms);
+    //m_callback.OnPlayBackSeekChapter(chapter_index);
   }
   else
   {
     // we do not have a chapter list so do a regular big jump.
-    if (chapter_index > GetChapter())
+    if (chapter_index > 0)
       Seek(true,  true);
     else
       Seek(false, true);
@@ -751,9 +763,8 @@ void CAMLPlayer::SeekTime(__int64 seek_ms)
   // seek here
   if (check_pid_valid(m_pid))
   {
-    WaitForPlaying(1000);
+    //WaitForPlaying(1000);
     player_timesearch(m_pid, (0.5 + seek_ms/1000.0));
-    m_callback.OnPlayBackSeek((int)seek_ms, (int)(seek_ms - m_elapsed_ms));
     WaitForSearchOK(5000);
   }
 }
@@ -1267,6 +1278,8 @@ bool CAMLPlayer::WaitForFormatValid(int timeout_ms)
             info->bit_rate        = media_info.audio_info[i]->bit_rate;
             info->duration        = media_info.audio_info[i]->duration;
             info->aformat         = media_info.audio_info[i]->aformat;
+            if(media_info.audio_info[i]->audio_language[0] != 0)
+              strncpy(info->audio_language, media_info.audio_info[i]->audio_language, 3);
 
             m_audio_streams.push_back(info);
           }
@@ -1293,6 +1306,25 @@ bool CAMLPlayer::WaitForFormatValid(int timeout_ms)
           if (m_subtitle_index != 0)
             m_subtitle_index = 0;
           m_subtitle_count = media_info.stream_info.total_sub_num;
+        }
+
+        if (media_info.stream_info.total_chapter_num > 0)
+        {
+          m_chapter_count = media_info.stream_info.total_chapter_num;
+
+          printf("m_chapter_count %d\n", m_chapter_count);
+
+          for(int i = 0; i < m_chapter_count; i++)
+          {
+            if(media_info.chapter_info[i] != NULL)
+            {
+              if(media_info.chapter_info[i]->name != NULL)
+                m_chapters[i].name = media_info.chapter_info[i]->name;
+              m_chapters[i].seekto_ms = media_info.chapter_info[i]->seekto_ms;
+
+              printf("Chapter Name : %s seekto_ms %lld\n", m_chapters[i].name.c_str(), m_chapters[i].seekto_ms);
+            }
+          }
         }
         return true;
         break;

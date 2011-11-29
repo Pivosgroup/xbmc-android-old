@@ -28,6 +28,12 @@
 #include <amports/aformat.h>
 #include <amports/vformat.h>
 
+// amlogic libplayer
+extern "C"
+{
+#include <player.h>
+}
+
 typedef struct AMLPlayerStreamInfo
 {
   int id;
@@ -43,6 +49,7 @@ typedef struct AMLPlayerStreamInfo
   int sample_rate;
   aformat_t aformat;
   vformat_t vformat;
+  char audio_language[4];
 } _AMLPlayerStreamInfo;
 
 class CAMLPlayer : public IPlayer, public CThread
@@ -199,7 +206,7 @@ private:
   {
     std::string name;
     int64_t     seekto_ms;
-  }                       m_chapters[64];
+  } m_chapters[MAX_CHAPTERS];
 
   int                     m_show_mainvideo;
   CRect                   m_dst_rect;
