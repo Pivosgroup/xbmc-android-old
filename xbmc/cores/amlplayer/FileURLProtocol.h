@@ -36,5 +36,6 @@ public:
   static int Read (URLContext *h, unsigned char *buf, int size);
   static int Write(URLContext *h, unsigned char *buf, int size);
   static int64_t Seek(URLContext *h, int64_t pos, int whence);
+  static int64_t SeekEx(URLContext *h, int64_t pos, int whence);
   static int Close(URLContext *h);
 };

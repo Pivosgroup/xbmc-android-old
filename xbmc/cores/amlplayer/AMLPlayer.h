@@ -25,6 +25,26 @@
 #include "dialogs/GUIDialogBusy.h"
 #include "threads/Thread.h"
 
+#include <amports/aformat.h>
+#include <amports/vformat.h>
+
+typedef struct AMLPlayerStreamInfo
+{
+  int id;
+  int width;
+  int height;
+  int aspect_ratio_num;
+  int aspect_ratio_den;
+  int frame_rate_num;
+  int frame_rate_den;
+  int bit_rate;
+  int duration;
+  int channel;
+  int sample_rate;
+  aformat_t aformat;
+  vformat_t vformat;
+} _AMLPlayerStreamInfo;
+
 class CAMLPlayer : public IPlayer, public CThread
 {
 public:
@@ -136,10 +156,14 @@ private:
   int           GetVideoStreamCount();
   void          ShowMainVideo(bool show);
   bool          WaitForStopped(int timeout_ms);
+  bool          WaitForSearchOK(int timeout_ms);
   bool          WaitForPlaying(int timeout_ms);
   bool          WaitForOpenMedia(int timeout_ms);
   bool          WaitForFormatValid(int timeout_ms);
+  void          ClearStreamInfos();
   bool          GetStatus();
+  CStdString    VideoCodecName(vformat_t vformat);
+  CStdString    AudioCodecName(aformat_t aformat);
 
   int                     m_speed;
   bool                    m_paused;
@@ -155,7 +179,6 @@ private:
   int                     m_audio_count;
   CStdString              m_audio_info;
   int                     m_audio_delay;
-  uint32_t                m_audio_channels;
 
   int                     m_video_index;
   int                     m_video_count;
@@ -185,4 +208,9 @@ private:
   CCriticalSection        m_aml_csection;
   static bool             m_aml_init;
   int                     m_pid;
+
+  std::vector<AMLPlayerStreamInfo*> m_video_streams;
+  std::vector<AMLPlayerStreamInfo*> m_audio_streams;
+  std::vector<AMLPlayerStreamInfo*> m_subtitle_streams;
+
 };

@@ -93,6 +93,22 @@ int64_t CFileURLProtocol::Seek(URLContext *h, int64_t pos, int whence)
 }
 
 //========================================================================
+int64_t CFileURLProtocol::SeekEx(URLContext *h, int64_t pos, int whence)
+{
+  XFILE::CFile *cfile = (XFILE::CFile*)h->priv_data;
+
+  // seek to the end of file
+  if (whence == AVSEEK_SIZE)
+    pos = cfile->GetLength();
+  else
+    pos = cfile->Seek(pos, whence & ~AVSEEK_FORCE);
+
+  //CLog::Log(LOGDEBUG, "CFileURLProtocol::Seek2 pos(%lld), whence(%d)", pos, whence);
+
+  return pos;
+}
+
+//========================================================================
 int CFileURLProtocol::Close(URLContext *h)
 {
   //CLog::Log(LOGDEBUG, "CFileURLProtocol::Close");
