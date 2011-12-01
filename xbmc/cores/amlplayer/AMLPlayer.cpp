@@ -41,9 +41,39 @@
 #include "utils/URIUtils.h"
 #include "utils/LangCodeExpander.h"
 
-#include <sstream>
-#include <iomanip>
+// amlogic libplayer
+extern "C"
+{
+#include <player.h>
+#include <amports/aformat.h>
+#include <amports/vformat.h>
+}
 
+struct AMLChapterInfo
+{
+  std::string name;
+  int64_t     seekto_ms;
+};
+
+struct AMLPlayerStreamInfo
+{
+  int   id;
+  int   width;
+  int   height;
+  int   aspect_ratio_num;
+  int   aspect_ratio_den;
+  int   frame_rate_num;
+  int   frame_rate_den;
+  int   bit_rate;
+  int   duration;
+  int   channel;
+  int   sample_rate;
+  int   format;
+  char  language[4];
+};
+
+
+////////////////////////////////////////////////////////////////////////////////////////////
 static int set_video_axis(int x, int y, int width, int height)
 {
   int fd;
@@ -153,6 +183,122 @@ static int media_info_dump(media_info_t* minfo)
   return 0;
 }
 
+static const char* VideoCodecName(int vformat)
+{
+  const char *format = "";
+
+  switch(vformat)
+  {
+    case VFORMAT_MPEG12:
+      format = "mpeg12";
+      break;
+    case VFORMAT_MPEG4:
+      format = "mpeg4";
+      break;
+    case VFORMAT_H264:
+      format = "h264";
+      break;
+    case VFORMAT_MJPEG:
+      format = "mjpeg";
+      break;
+    case VFORMAT_REAL:
+      format = "real";
+      break;
+    case VFORMAT_JPEG:
+      format = "jpeg";
+      break;
+    case VFORMAT_VC1:
+      format = "vc1";
+      break;
+    case VFORMAT_AVS:
+      format = "avs";
+      break;
+    case VFORMAT_SW:
+      format = "sw";
+      break;
+    case VFORMAT_H264MVC:
+      format = "h264mvc";
+      break;
+    default:
+      format = "unknown";
+      break;
+  }
+  return format;
+}
+
+static const char* AudioCodecName(int aformat)
+{
+  const char *format = "";
+
+  switch(aformat)
+  {
+    case AFORMAT_MPEG:
+      format = "mpeg";
+      break;
+    case AFORMAT_PCM_S16LE:
+      format = "pcm";
+      break;
+    case AFORMAT_AAC:
+      format = "aac";
+      break;
+    case AFORMAT_AC3:
+      format = "ac3";
+      break;
+    case AFORMAT_ALAW:
+      format = "alaw";
+      break;
+    case AFORMAT_MULAW:
+      format = "mulaw";
+      break;
+    case AFORMAT_DTS:
+      format = "dts";
+      break;
+    case AFORMAT_PCM_S16BE:
+      format = "pcm";
+      break;
+    case AFORMAT_FLAC:
+      format = "flac";
+      break;
+    case AFORMAT_COOK:
+      format = "cook";
+      break;
+    case AFORMAT_PCM_U8:
+      format = "pcm";
+      break;
+    case AFORMAT_ADPCM:
+      format = "adpcm";
+      break;
+    case AFORMAT_AMR:
+      format = "amr";
+      break;
+    case AFORMAT_RAAC:
+      format = "raac";
+      break;
+    case AFORMAT_WMA:
+      format = "wma";
+      break;
+    case AFORMAT_WMAPRO:
+      format = "wmapro";
+      break;
+    case AFORMAT_PCM_BLURAY:
+      format = "lpcm";
+      break;
+    case AFORMAT_ALAC:
+      format = "alac";
+      break;
+    case AFORMAT_VORBIS:
+      format = "vorbis";
+      break;
+    default:
+      format = "unknown";
+      break;
+
+  }
+
+  return format;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////
 bool CAMLPlayer::m_aml_init = false;
 
 CAMLPlayer::CAMLPlayer(IPlayerCallback &callback)
@@ -184,7 +330,7 @@ bool CAMLPlayer::OpenFile(const CFileItem &file, const CPlayerOptions &options)
     CLog::Log(LOGNOTICE, "CAMLPlayer: Opening: %s", file.GetPath().c_str());
     // if playing a file close it first
     // this has to be changed so we won't have to close it.
-    if(ThreadHandle())
+    if (ThreadHandle())
       CloseFile();
 
     m_item = file;
@@ -493,28 +639,24 @@ void CAMLPlayer::SetVolume(long nVolume)
 void CAMLPlayer::GetAudioInfo(CStdString &strAudioInfo)
 {
   CSingleLock lock(m_aml_csection);
-  if(m_audio_streams.size() == 0 || m_audio_index > (int)(m_audio_streams.size() - 1))
+  if (m_audio_streams.size() == 0 || m_audio_index > (int)(m_audio_streams.size() - 1))
     return;
 
-  std::ostringstream s;
-    s << "kB/s:" << fixed << setprecision(2) << (double)m_audio_streams[m_audio_index]->bit_rate / 1024.0;
-
-  strAudioInfo.Format("Audio stream (%s) [%s]", 
-                      AudioCodecName(m_audio_streams[m_audio_index]->aformat).c_str(), s.str());
+  strAudioInfo.Format("Audio stream (%s) [kB/s:%.2f]",
+    AudioCodecName(m_audio_streams[m_audio_index]->format),
+    (double)m_audio_streams[m_audio_index]->bit_rate / 1024.0);
 }
 
 void CAMLPlayer::GetVideoInfo(CStdString &strVideoInfo)
 {
   CSingleLock lock(m_aml_csection);
-  if(m_video_streams.size() == 0 || m_video_index > (int)(m_video_streams.size() - 1))
+  if (m_video_streams.size() == 0 || m_video_index > (int)(m_video_streams.size() - 1))
     return;
 
-  std::ostringstream s;
-    s << "fr:"     << fixed << setprecision(3) << GetActualFPS();
-    s << ", Mb/s:" << fixed << setprecision(2) << (double)m_video_streams[m_video_index]->bit_rate / (1024.0*1024.0);
-
-  strVideoInfo.Format("Video stream (%s) [%s]", 
-                      VideoCodecName(m_video_streams[m_video_index]->vformat).c_str(), s.str());
+  strVideoInfo.Format("Video stream (%s) [fr:%.3f Mb/s:%.2f]",
+    VideoCodecName(m_video_streams[m_video_index]->format),
+    GetActualFPS(),
+    (double)m_video_streams[m_video_index]->bit_rate / (1024.0*1024.0));
 }
 
 int CAMLPlayer::GetAudioStreamCount()
@@ -536,16 +678,13 @@ void CAMLPlayer::GetAudioStreamName(int iStream, CStdString &strStreamName)
 
   strStreamName.Format("Undefined");
 
-  if(iStream > (int)m_audio_streams.size() || iStream < 0)
+  if (iStream > (int)m_audio_streams.size() || iStream < 0)
     return;
 
-  // strStreamName.Format("%s", res.value.streamInfo.name);
-  strStreamName.Format("Undefined");
-
-  if( m_audio_streams[iStream]->audio_language[0] != 0)
+  if ( m_audio_streams[iStream]->language[0] != 0)
   {
     CStdString name;
-    g_LangCodeExpander.Lookup( name, m_audio_streams[iStream]->audio_language );
+    g_LangCodeExpander.Lookup( name, m_audio_streams[iStream]->language);
     strStreamName = name;
   }
 
@@ -556,7 +695,7 @@ void CAMLPlayer::SetAudioStream(int SetAudioStream)
   //CLog::Log(LOGDEBUG, "CAMLPlayer::SetAudioStream");
   CSingleLock lock(m_aml_csection);
 
-  if(SetAudioStream > (int)m_audio_streams.size() || SetAudioStream < 0)
+  if (SetAudioStream > (int)m_audio_streams.size() || SetAudioStream < 0)
     return;
   
   m_audio_index = SetAudioStream;
@@ -598,7 +737,6 @@ void CAMLPlayer::GetSubtitleName(int iStream, CStdString &strStreamName)
   //CLog::Log(LOGDEBUG, "CAMLPlayer::GetSubtitleName");
   CSingleLock lock(m_aml_csection);
   strStreamName.Format("GetSubtitleName_%d", iStream);
-  //strStreamName.Format("%s", res.value.streamInfo.name);
 }
  
 void CAMLPlayer::SetSubtitle(int iStream)
@@ -693,9 +831,9 @@ int CAMLPlayer::GetChapter()
 {
   GetStatus();
 
-  for(int i = 0; i < m_chapter_count - 1; i++)
+  for (int i = 0; i < m_chapter_count - 1; i++)
   {
-    if(m_elapsed_ms >= m_chapters[i].seekto_ms && m_elapsed_ms < m_chapters[i + 1].seekto_ms)
+    if (m_elapsed_ms >= m_chapters[i]->seekto_ms && m_elapsed_ms < m_chapters[i + 1]->seekto_ms)
       return i + 1;
   }
   return 0;
@@ -704,7 +842,7 @@ int CAMLPlayer::GetChapter()
 void CAMLPlayer::GetChapterName(CStdString& strChapterName)
 {
   if (m_chapter_count)
-    strChapterName = m_chapters[GetChapter() - 1].name;
+    strChapterName = m_chapters[GetChapter() - 1]->name;
 }
 
 int CAMLPlayer::SeekChapter(int chapter_index)
@@ -721,9 +859,8 @@ int CAMLPlayer::SeekChapter(int chapter_index)
 
     // time units are seconds,
     // so we add 1000ms to get into the chapter.
-    int64_t seek_ms = m_chapters[chapter_index - 1].seekto_ms + 1000;
+    int64_t seek_ms = m_chapters[chapter_index - 1]->seekto_ms + 1000;
 
-    // bugfix: dcchd takes forever to seek to 0 and play
     //  seek to 1 second and play is immediate.
     if (seek_ms <= 0)
       seek_ms = 1000;
@@ -746,10 +883,6 @@ int CAMLPlayer::SeekChapter(int chapter_index)
 float CAMLPlayer::GetActualFPS()
 {
   float video_fps = m_video_fps_numerator / m_video_fps_denominator;
-  if (check_pid_valid(m_pid))
-  {
-    //video_fps = m_video_fps_numerator / m_video_fps_denominator;
-  }
   CLog::Log(LOGDEBUG, "CAMLPlayer::GetActualFPS:m_video_fps(%f)", video_fps);
   return video_fps;
 }
@@ -782,7 +915,7 @@ int CAMLPlayer::GetTotalTime()
 int CAMLPlayer::GetAudioBitrate()
 {
   CSingleLock lock(m_aml_csection);
-  if(m_audio_streams.size() == 0 || m_audio_index > (int)(m_audio_streams.size() - 1))
+  if (m_audio_streams.size() == 0 || m_audio_index > (int)(m_audio_streams.size() - 1))
     return 0;
   
   return m_audio_streams[m_audio_index]->bit_rate;
@@ -791,7 +924,7 @@ int CAMLPlayer::GetAudioBitrate()
 int CAMLPlayer::GetVideoBitrate()
 {
   CSingleLock lock(m_aml_csection);
-  if(m_video_streams.size() == 0 || m_video_index > (int)(m_video_streams.size() - 1))
+  if (m_video_streams.size() == 0 || m_video_index > (int)(m_video_streams.size() - 1))
     return 0;
   
   return m_video_streams[m_audio_index]->bit_rate;
@@ -806,7 +939,7 @@ int CAMLPlayer::GetSourceBitrate()
 int CAMLPlayer::GetChannels()
 {
   CSingleLock lock(m_aml_csection);
-  if(m_audio_streams.size() == 0 || m_audio_index > (int)(m_audio_streams.size() - 1))
+  if (m_audio_streams.size() == 0 || m_audio_index > (int)(m_audio_streams.size() - 1))
     return 0;
   
   return m_audio_streams[m_audio_index]->channel;
@@ -821,7 +954,7 @@ int CAMLPlayer::GetBitsPerSample()
 int CAMLPlayer::GetSampleRate()
 {
   CSingleLock lock(m_aml_csection);
-  if(m_audio_streams.size() == 0 || m_audio_index > (int)(m_audio_streams.size() - 1))
+  if (m_audio_streams.size() == 0 || m_audio_index > (int)(m_audio_streams.size() - 1))
     return 0;
   
   return m_audio_streams[m_audio_index]->sample_rate;
@@ -830,10 +963,10 @@ int CAMLPlayer::GetSampleRate()
 CStdString CAMLPlayer::GetAudioCodecName()
 {
   CStdString strAudioCodec = "";
-  if(m_audio_streams.size() == 0 || m_audio_index > (int)(m_audio_streams.size() - 1))
+  if (m_audio_streams.size() == 0 || m_audio_index > (int)(m_audio_streams.size() - 1))
     return strAudioCodec;
 
-  strAudioCodec = AudioCodecName(m_audio_streams[m_audio_index]->aformat);
+  strAudioCodec = AudioCodecName(m_audio_streams[m_audio_index]->format);
 
   return strAudioCodec;
 }
@@ -841,10 +974,10 @@ CStdString CAMLPlayer::GetAudioCodecName()
 CStdString CAMLPlayer::GetVideoCodecName()
 {
   CStdString strVideoCodec = "";
-  if(m_video_streams.size() == 0 || m_video_index > (int)(m_video_streams.size() - 1))
+  if (m_video_streams.size() == 0 || m_video_index > (int)(m_video_streams.size() - 1))
     return strVideoCodec;
   
-  strVideoCodec = VideoCodecName(m_video_streams[m_audio_index]->vformat);
+  strVideoCodec = VideoCodecName(m_video_streams[m_audio_index]->format);
 
   return strVideoCodec;
 }
@@ -890,7 +1023,7 @@ void CAMLPlayer::ToFFRW(int iSpeed)
         break;
       default:
         // N x fast forward/rewind (I-frames)
-        // speed playback 2,4,8
+        // speed playback 1,2,4,8
         if (iSpeed > 0)
           player_forward(m_pid,   iSpeed);
         else
@@ -917,7 +1050,7 @@ void CAMLPlayer::OnExit()
   Sleep(100);
   m_bStop = true;
   // if we didn't stop playing, advance to the next item in xbmc's playlist
-  if(m_options.identify == false)
+  if (m_options.identify == false)
   {
     if (m_StopPlaying)
       m_callback.OnPlayBackStopped();
@@ -998,7 +1131,7 @@ void CAMLPlayer::Process()
         CLog::Log(LOGDEBUG,"%s - change configuration. %dx%d. framerate: %4.2f. format: %s",
           __FUNCTION__, width, height, fFrameRate, formatstr.c_str());
         g_renderManager.IsConfigured();
-        if(!g_renderManager.Configure(width, height, width, height, fFrameRate, flags, 0))
+        if (!g_renderManager.Configure(width, height, width, height, fFrameRate, flags, 0))
         {
           CLog::Log(LOGERROR, "%s - failed to configure renderer", __FUNCTION__);
         }
@@ -1022,6 +1155,8 @@ void CAMLPlayer::Process()
             printf("CAMLPlayer::Process: %s\n", player_status2str(pstatus));
             // player is parsing file, decoder not running
             break;
+
+          default:
           case PLAYER_RUNNING:
             GetStatus();
             // playback status, decoder is running
@@ -1131,8 +1266,8 @@ bool CAMLPlayer::WaitForSearchOK(int timeout_ms)
     switch(pstatus)
     {
       default:
-        Sleep(500);
-        timeout_ms -= 500;
+        Sleep(100);
+        timeout_ms -= 100;
         break;
       case PLAYER_ERROR:
       case PLAYER_EXIT:
@@ -1227,17 +1362,20 @@ bool CAMLPlayer::WaitForFormatValid(int timeout_ms)
         // m_video_index, m_audio_index, m_subtitle_index might be -1 eventhough
         // total_video_xxx is > 0, not sure why, they should be set to zero or
         // some other sensible value.
-        printf("CAMLPlayer::WaitForFormatValid: m_video_index(%d), m_audio_index(%d), m_subtitle_index(%d)\n",
+        printf("CAMLPlayer::WaitForFormatValid: "
+          "m_video_index(%d), m_audio_index(%d), m_subtitle_index(%d), m_chapter_count(%d)\n",
           media_info.stream_info.cur_video_index,
           media_info.stream_info.cur_audio_index,
-          media_info.stream_info.cur_sub_index);
+          media_info.stream_info.cur_sub_index,
+          media_info.stream_info.total_chapter_num);
 
+        // video info
         if (media_info.stream_info.has_video && media_info.stream_info.total_video_num > 0)
         {
-          for(int i = 0; i < media_info.stream_info.total_video_num; i++)
+          for (int i = 0; i < media_info.stream_info.total_video_num; i++)
           {
             AMLPlayerStreamInfo *info = (AMLPlayerStreamInfo *) malloc(sizeof(AMLPlayerStreamInfo));
-            memset(info, 0x0, sizeof(AMLPlayerStreamInfo));
+            memset(info, 0x00, sizeof(AMLPlayerStreamInfo));
 
             info->id              = media_info.video_info[i]->id;
             info->width           = media_info.video_info[i]->width;
@@ -1246,7 +1384,7 @@ bool CAMLPlayer::WaitForFormatValid(int timeout_ms)
             info->frame_rate_den  = media_info.video_info[i]->frame_rate_den;
             info->bit_rate        = media_info.video_info[i]->bit_rate;
             info->duration        = media_info.video_info[i]->duartion;
-            info->vformat         = media_info.video_info[i]->format;
+            info->format          = media_info.video_info[i]->format;
 
             m_video_streams.push_back(info);
           }
@@ -1265,22 +1403,22 @@ bool CAMLPlayer::WaitForFormatValid(int timeout_ms)
             return false;
         }
 
+        // audio info
         if (media_info.stream_info.has_audio && media_info.stream_info.total_audio_num > 0)
         {
-          for(int i = 0; i < media_info.stream_info.total_audio_num; i++)
+          for (int i = 0; i < media_info.stream_info.total_audio_num; i++)
           {
-            AMLPlayerStreamInfo *info = (AMLPlayerStreamInfo *) malloc(sizeof(AMLPlayerStreamInfo));
-            memset(info, 0x0, sizeof(AMLPlayerStreamInfo));
+            AMLPlayerStreamInfo *info = (AMLPlayerStreamInfo*)malloc(sizeof(AMLPlayerStreamInfo));
+            memset(info, 0x00, sizeof(AMLPlayerStreamInfo));
 
             info->id              = media_info.audio_info[i]->id;
             info->channel         = media_info.audio_info[i]->channel;
             info->sample_rate     = media_info.audio_info[i]->sample_rate;
             info->bit_rate        = media_info.audio_info[i]->bit_rate;
             info->duration        = media_info.audio_info[i]->duration;
-            info->aformat         = media_info.audio_info[i]->aformat;
-            if(media_info.audio_info[i]->audio_language[0] != 0)
-              strncpy(info->audio_language, media_info.audio_info[i]->audio_language, 3);
-
+            info->format          = media_info.audio_info[i]->aformat;
+            if (media_info.audio_info[i]->audio_language[0] != 0)
+              strncpy(info->language, media_info.audio_info[i]->audio_language, 3);
             m_audio_streams.push_back(info);
           }
 
@@ -1290,15 +1428,15 @@ bool CAMLPlayer::WaitForFormatValid(int timeout_ms)
           m_audio_count	= media_info.stream_info.total_audio_num;
         }
 
+        // subtitle info
         if (media_info.stream_info.has_sub && media_info.stream_info.total_sub_num > 0)
         {
-          for(int i = 0; i < media_info.stream_info.total_sub_num; i++)
+          for (int i = 0; i < media_info.stream_info.total_sub_num; i++)
           {
-            AMLPlayerStreamInfo *info = (AMLPlayerStreamInfo *) malloc(sizeof(AMLPlayerStreamInfo));
-            memset(info, 0x0, sizeof(AMLPlayerStreamInfo));
+            AMLPlayerStreamInfo *info = (AMLPlayerStreamInfo*)malloc(sizeof(AMLPlayerStreamInfo));
+            memset(info, 0x00, sizeof(AMLPlayerStreamInfo));
 
-            info->id              = media_info.sub_info[i]->id;
-
+            info->id = media_info.sub_info[i]->id;
             m_subtitle_streams.push_back(info);
           }
 
@@ -1308,21 +1446,19 @@ bool CAMLPlayer::WaitForFormatValid(int timeout_ms)
           m_subtitle_count = media_info.stream_info.total_sub_num;
         }
 
+        // chapter info
         if (media_info.stream_info.total_chapter_num > 0)
         {
           m_chapter_count = media_info.stream_info.total_chapter_num;
-
-          printf("m_chapter_count %d\n", m_chapter_count);
-
-          for(int i = 0; i < m_chapter_count; i++)
+          for (int i = 0; i < m_chapter_count; i++)
           {
-            if(media_info.chapter_info[i] != NULL)
+            if (media_info.chapter_info[i] != NULL)
             {
-              if(media_info.chapter_info[i]->name != NULL)
-                m_chapters[i].name = media_info.chapter_info[i]->name;
-              m_chapters[i].seekto_ms = media_info.chapter_info[i]->seekto_ms;
+              AMLChapterInfo *info = new AMLChapterInfo;
 
-              printf("Chapter Name : %s seekto_ms %lld\n", m_chapters[i].name.c_str(), m_chapters[i].seekto_ms);
+              info->name = media_info.chapter_info[i]->name;
+              info->seekto_ms = media_info.chapter_info[i]->seekto_ms;
+              m_chapters.push_back(info);
             }
           }
         }
@@ -1338,21 +1474,21 @@ void CAMLPlayer::ClearStreamInfos()
 {
   CSingleLock lock(m_aml_csection);
 
-  if(!m_audio_streams.empty())
+  if (!m_audio_streams.empty())
   {
-    for(unsigned int i = 0; i < m_audio_streams.size(); i++)
+    for (unsigned int i = 0; i < m_audio_streams.size(); i++)
     {
       AMLPlayerStreamInfo *info = m_audio_streams[i];
       free(info);
     }
     m_audio_streams.clear();
   }
-  m_audio_count     = 0;
-  m_audio_index     = -1;
+  m_audio_count = 0;
+  m_audio_index = -1;
 
-  if(!m_video_streams.empty())
+  if (!m_video_streams.empty())
   {
-    for(unsigned int i = 0; i < m_video_streams.size(); i++)
+    for (unsigned int i = 0; i < m_video_streams.size(); i++)
     {
       AMLPlayerStreamInfo *info = m_video_streams[i];
       free(info);
@@ -1362,9 +1498,9 @@ void CAMLPlayer::ClearStreamInfos()
   m_video_count = 0;
   m_video_index = -1;
 
-  if(!m_subtitle_streams.empty())
+  if (!m_subtitle_streams.empty())
   {
-    for(unsigned int i = 0; i < m_subtitle_streams.size(); i++)
+    for (unsigned int i = 0; i < m_subtitle_streams.size(); i++)
     {
       AMLPlayerStreamInfo *info = m_subtitle_streams[i];
       free(info);
@@ -1373,6 +1509,17 @@ void CAMLPlayer::ClearStreamInfos()
   }
   m_subtitle_count = 0;
   m_subtitle_index = -1;
+
+  if (!m_chapters.empty())
+  {
+    for (unsigned int i = 0; i < m_chapters.size(); i++)
+    {
+      AMLChapterInfo *info = m_chapters[i];
+      delete info;
+    }
+    m_chapters.clear();
+  }
+  m_chapter_count = 0;
 }
 
 bool CAMLPlayer::GetStatus()
@@ -1393,119 +1540,6 @@ bool CAMLPlayer::GetStatus()
   //  player_info.audio_bufferlevel, player_info.video_bufferlevel, player_info.bufed_time, player_info.bufed_pos);
 
   return true;
-}
-
-CStdString CAMLPlayer::VideoCodecName(vformat_t vformat)
-{
-  CStdString format = "";
-
-  switch(vformat)
-  {
-    case VFORMAT_MPEG12:
-      format = "mpeg12";
-      break;
-    case VFORMAT_MPEG4:
-      format = "mpeg4";
-      break;
-    case VFORMAT_H264:
-      format = "h264";
-      break;
-    case VFORMAT_MJPEG:
-      format = "mjpeg";
-      break;
-    case VFORMAT_REAL:
-      format = "real";
-      break;
-    case VFORMAT_JPEG:
-      format = "jpeg";
-      break;
-    case VFORMAT_VC1:
-      format = "vc1";
-      break;
-    case VFORMAT_AVS:
-      format = "avs";
-      break;
-    case VFORMAT_SW:
-      format = "sw";
-      break;
-    case VFORMAT_H264MVC:
-      format = "h264mvc";
-      break;
-    default:
-      break;
-  }
-  return format;
-}
-
-CStdString CAMLPlayer::AudioCodecName(aformat_t aformat)
-{
-  CStdString format = "";
-
-  switch(aformat)
-  {
-    case AFORMAT_MPEG:
-      format = "mpeg";
-      break;
-    case AFORMAT_PCM_S16LE:
-      format = "pcm";
-      break;
-    case AFORMAT_AAC:
-      format = "aac";
-      break;
-    case AFORMAT_AC3:
-      format = "ac3";
-      break;
-    case AFORMAT_ALAW:
-      format = "alaw";
-      break;
-    case AFORMAT_MULAW:
-      format = "mulaw";
-      break;
-    case AFORMAT_DTS:
-      format = "dts";
-      break;
-    case AFORMAT_PCM_S16BE:
-      format = "pcm";
-      break;
-    case AFORMAT_FLAC:
-      format = "flac";
-      break;
-    case AFORMAT_COOK:
-      format = "cook";
-      break;
-    case AFORMAT_PCM_U8:
-      format = "pcm";
-      break;
-    case AFORMAT_ADPCM:
-      format = "adpcm";
-      break;
-    case AFORMAT_AMR:
-      format = "amr";
-      break;
-    case AFORMAT_RAAC:
-      format = "raac";
-      break;
-    case AFORMAT_WMA:
-      format = "wma";
-      break;
-    case AFORMAT_WMAPRO:
-      format = "wmapro";
-      break;
-    case AFORMAT_PCM_BLURAY:
-      format = "lpcm";
-      break;
-    case AFORMAT_ALAC:
-      format = "alac";
-      break;
-    case AFORMAT_VORBIS:
-      format = "vorbis";
-      break;
-    default:
-      break;
-
-  }
-
-  return format;
 }
 
 #endif

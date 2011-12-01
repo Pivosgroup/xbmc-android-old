@@ -25,32 +25,8 @@
 #include "dialogs/GUIDialogBusy.h"
 #include "threads/Thread.h"
 
-#include <amports/aformat.h>
-#include <amports/vformat.h>
-
-// amlogic libplayer
-extern "C"
-{
-#include <player.h>
-}
-
-typedef struct AMLPlayerStreamInfo
-{
-  int id;
-  int width;
-  int height;
-  int aspect_ratio_num;
-  int aspect_ratio_den;
-  int frame_rate_num;
-  int frame_rate_den;
-  int bit_rate;
-  int duration;
-  int channel;
-  int sample_rate;
-  aformat_t aformat;
-  vformat_t vformat;
-  char audio_language[4];
-} _AMLPlayerStreamInfo;
+typedef struct AMLChapterInfo AMLChapterInfo;
+typedef struct AMLPlayerStreamInfo AMLPlayerStreamInfo;
 
 class CAMLPlayer : public IPlayer, public CThread
 {
@@ -169,8 +145,6 @@ private:
   bool          WaitForFormatValid(int timeout_ms);
   void          ClearStreamInfos();
   bool          GetStatus();
-  CStdString    VideoCodecName(vformat_t vformat);
-  CStdString    AudioCodecName(aformat_t aformat);
 
   int                     m_speed;
   bool                    m_paused;
@@ -202,11 +176,6 @@ private:
 
   int                     m_chapter_index;
   int                     m_chapter_count;
-  struct chapters
-  {
-    std::string name;
-    int64_t     seekto_ms;
-  } m_chapters[MAX_CHAPTERS];
 
   int                     m_show_mainvideo;
   CRect                   m_dst_rect;
@@ -219,5 +188,6 @@ private:
   std::vector<AMLPlayerStreamInfo*> m_video_streams;
   std::vector<AMLPlayerStreamInfo*> m_audio_streams;
   std::vector<AMLPlayerStreamInfo*> m_subtitle_streams;
+  std::vector<AMLChapterInfo*>      m_chapters;
 
 };
