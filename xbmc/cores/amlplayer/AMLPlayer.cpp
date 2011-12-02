@@ -591,8 +591,10 @@ void CAMLPlayer::Seek(bool bPlus, bool bLargeStep)
     seek_ms = m_duration_ms;
 
   // do seek here
+  g_infoManager.SetDisplayAfterSeek(100000);
   SeekTime(seek_ms);
   m_callback.OnPlayBackSeek((int)seek_ms, (int)(seek_ms - m_elapsed_ms));
+  g_infoManager.SetDisplayAfterSeek();
 }
 
 bool CAMLPlayer::SeekScene(bool bPlus)
@@ -866,8 +868,10 @@ int CAMLPlayer::SeekChapter(int chapter_index)
       seek_ms = 1000;
 
     // seek to chapter here
+    g_infoManager.SetDisplayAfterSeek(100000);
     SeekTime(seek_ms);
-    //m_callback.OnPlayBackSeekChapter(chapter_index);
+    m_callback.OnPlayBackSeekChapter(chapter_index);
+    g_infoManager.SetDisplayAfterSeek();
   }
   else
   {
