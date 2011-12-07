@@ -3,9 +3,9 @@ include ../depends.mk
 
 # lib name, version
 LIBNAME=rtmpdump
-VERSION=2.3
+VERSION=2.4
 SOURCE=$(LIBNAME)-$(VERSION)
-ARCHIVE=$(SOURCE).tgz
+ARCHIVE=$(SOURCE).tar.gz
 
 # configuration settings
 
