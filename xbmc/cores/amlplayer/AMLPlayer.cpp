@@ -104,10 +104,14 @@ static int set_sysfs_int(const char *path, int val)
   return -1;
 }
 
-static int update_player_info(int pid,player_info_t * info)
+static int update_player_info(int pid, player_info_t *info)
 {
-  //printf("update_player_info: pid:%d, status:%x, current pos:%d, total:%d, errcode:%x\n",
-  //  pid, info->status,info->current_time, info->full_time, ~(info->error_no));
+  // we get called when status changes or after update time expires
+  static player_status old_status;
+  if (old_status != info->status)
+    printf("update_player_info: %s\n", player_status2str(info->status));
+  old_status = info->status;
+
   return 0;
 }
 
@@ -310,6 +314,7 @@ CAMLPlayer::CAMLPlayer(IPlayerCallback &callback)
   m_speed = 0;
   m_paused = false;
   m_StopPlaying = false;
+  m_subtitle_codec = -1;
   if (!m_aml_init)
   {
     //player_init();
@@ -348,6 +353,10 @@ bool CAMLPlayer::OpenFile(const CFileItem &file, const CPlayerOptions &options)
     m_video_fps_denominator = 1;
 
     m_subtitle_delay =  0;
+    m_subtitle_codec = -1;
+    m_subtitle_string=  "";
+    m_subtitle_bgntime = 0;
+    m_subtitle_endtime = 0;
 
     m_chapter_index  =  0;
     m_chapter_count  =  0;
@@ -412,7 +421,7 @@ bool CAMLPlayer::OpenFile(const CFileItem &file, const CPlayerOptions &options)
     play_control.video_index = -1; //MUST
     play_control.audio_index = -1; //MUST
     play_control.sub_index   = -1; //MUST
-    play_control.hassub      =  0; //disable subtitles, they are borked
+    play_control.hassub      =  1;
     play_control.t_pos       = -1;
     play_control.need_start  =  1; // if 0,you can omit player_start_play API.
                                    // just play video/audio immediately.
@@ -724,30 +733,43 @@ float CAMLPlayer::GetSubTitleDelay()
 
 int CAMLPlayer::GetSubtitleCount()
 {
-  //CLog::Log(LOGDEBUG, "CAMLPlayer::GetSubtitleCount");
   return m_subtitle_count;
 }
 
 int CAMLPlayer::GetSubtitle()
 {
-  //CLog::Log(LOGDEBUG, "CAMLPlayer::GetSubtitle");
   return m_subtitle_index;
 }
 
 void CAMLPlayer::GetSubtitleName(int iStream, CStdString &strStreamName)
 {
-  //CLog::Log(LOGDEBUG, "CAMLPlayer::GetSubtitleName");
   CSingleLock lock(m_aml_csection);
-  strStreamName.Format("GetSubtitleName_%d", iStream);
+
+  strStreamName.Format("Undefined");
+
+  if (iStream > (int)m_subtitle_streams.size() || iStream < 0)
+    return;
+
+  if ( m_subtitle_streams[iStream]->language[0] != 0)
+  {
+    CStdString name;
+    g_LangCodeExpander.Lookup(name, m_subtitle_streams[iStream]->language);
+    strStreamName = name;
+  }
+  printf("CAMLPlayer::GetSubtitleName, iStream(%d)\n", iStream);
 }
  
 void CAMLPlayer::SetSubtitle(int iStream)
 {
-  //CLog::Log(LOGDEBUG, "CAMLPlayer::SetSubtitle");
   CSingleLock lock(m_aml_csection);
-  if (check_pid_valid(m_pid) && iStream > m_subtitle_count)
-    player_sid(m_pid, iStream);
+
+  if (iStream > (int)m_subtitle_streams.size() || iStream < 0)
+    return;
+
   m_subtitle_index = iStream;
+
+  if (check_pid_valid(m_pid))
+    player_sid(m_pid, m_subtitle_streams[m_subtitle_index]->id);
 }
 
 bool CAMLPlayer::GetSubtitleVisible()
@@ -757,11 +779,8 @@ bool CAMLPlayer::GetSubtitleVisible()
 
 void CAMLPlayer::SetSubtitleVisible(bool bVisible)
 {
-  CSingleLock lock(m_aml_csection);
-
-  //if (bVisible)
-  //else
-  m_subtitle_show = bVisible;
+  m_subtitle_show = (bVisible && m_subtitle_count);
+  g_settings.m_currentVideoSettings.m_SubtitleOn = bVisible;
 }
 
 int CAMLPlayer::AddSubtitle(const CStdString& strSubPath)
@@ -1039,6 +1058,21 @@ void CAMLPlayer::ToFFRW(int iSpeed)
   }
 }
 
+bool CAMLPlayer::GetCurrentSubtitle(CStdString& strSubtitle)
+{
+  strSubtitle = "";
+
+  // force updated to m_elapsed_ms.
+  GetStatus();
+
+  CSingleLock lock(m_subtitle_csection);
+  // TODO: refactor this into a std::vector<CStdString>
+  if (m_subtitle_bgntime < m_elapsed_ms && m_subtitle_endtime > m_elapsed_ms)
+    strSubtitle = m_subtitle_string;
+
+  return !strSubtitle.IsEmpty();
+}
+
 void CAMLPlayer::OnStartup()
 {
   //m_CurrentVideo.Clear();
@@ -1069,7 +1103,7 @@ void CAMLPlayer::Process()
   try
   {
     // wait for media to open with 30 second timeout.
-    if (WaitForOpenMedia(30000))
+    if (WaitForFormatValid(30000))
     {
       // start the playback.
       int res = player_start_play(m_pid);
@@ -1078,7 +1112,7 @@ void CAMLPlayer::Process()
     }
     else
     {
-      throw "CAMLPlayer::Process:WaitForOpenMedia timeout";
+      throw "CAMLPlayer::Process:WaitForFormatValid timeout";
     }
 
     // hide the mainvideo layer so we can get stream info
@@ -1105,10 +1139,6 @@ void CAMLPlayer::Process()
         SeekTime(m_options.starttime * 1000);
         WaitForPlaying(1000);
       }
-
-      // wait until video or audio format is valid
-      if (!WaitForFormatValid(2000))
-        throw "CAMLPlayer::Process: WaitForFormatValid failed";
 
       // drop CGUIDialogBusy dialog and release the hold in OpenFile.
       m_ready.Set();
@@ -1143,6 +1173,9 @@ void CAMLPlayer::Process()
         {
           CLog::Log(LOGERROR, "%s - renderer not started", __FUNCTION__);
         }
+
+        if (m_subtitle_show)
+          m_subtitle_codec = codec_open_sub_read();
       }
 
       if (m_options.identify == false)
@@ -1178,6 +1211,12 @@ void CAMLPlayer::Process()
             printf("CAMLPlayer::Process: %s\n", player_status2str(pstatus));
             break;
 
+          case PLAYER_FOUND_SUB:
+            // found a NEW subtitle in stream.
+            // TODO: reload m_subtitle_streams
+            printf("CAMLPlayer::Process: %s\n", player_status2str(pstatus));
+            break;
+
           case PLAYER_PLAYEND:
             GetStatus();
             printf("CAMLPlayer::Process: %s\n", player_status2str(pstatus));
@@ -1191,7 +1230,53 @@ void CAMLPlayer::Process()
             m_StopPlaying = true;
             break;
         }
-        Sleep(500);
+
+        if (m_subtitle_codec > 0)
+        {
+          int sub_size = codec_get_sub_size_fd(m_subtitle_codec);
+          if (sub_size > 0)
+          {
+            int sub_type = 0, sub_pts = 0;
+            char *sub_buffer = (char*)calloc(sub_size + 1, 1);
+            codec_read_sub_data_fd(m_subtitle_codec, sub_buffer, sub_size);
+            
+            if (sub_size > 8)
+              sub_type  = (sub_buffer[5] << 16)  | (sub_buffer[6] << 8)   | sub_buffer[7];
+            if (sub_size > 15)
+              sub_pts   = (sub_buffer[12] << 24) | (sub_buffer[13] << 16) | (sub_buffer[14] << 8) | sub_buffer[15];
+
+            // csection it now as we are diddling shared vars
+            CSingleLock lock(m_subtitle_csection);
+
+            // sub_pts are in ffmpeg timebase, not ms timebase, convert it.
+            m_subtitle_bgntime = sub_pts/ 90;
+            m_subtitle_endtime = m_subtitle_bgntime + 4000;
+
+            // skip over header, subtitles begin at sub_buffer[20]
+            m_subtitle_string = &sub_buffer[20];
+            free(sub_buffer);
+            // quirks
+            m_subtitle_string.Replace("&apos;","\'");
+
+            /* TODO: handle other subtitle codec types
+            // subtitle codecs
+            CODEC_ID_DVD_SUBTITLE= 0x17000,
+            CODEC_ID_DVB_SUBTITLE,
+            CODEC_ID_TEXT,  ///< raw UTF-8 text
+            CODEC_ID_XSUB,
+            CODEC_ID_SSA,
+            CODEC_ID_MOV_TEXT,
+            CODEC_ID_HDMV_PGS_SUBTITLE,
+            CODEC_ID_DVB_TELETEXT,
+            CODEC_ID_SRT,
+            CODEC_ID_MICRODVD,
+            */
+            //printf("CAMLPlayer::Process: "
+            //  "sub_type(0x%x), m_subtitle_bgntime(%lld), m_subtitle_endtime(%lld), strSubtitle.c_str(%s)\n",
+            //  sub_type, m_subtitle_bgntime, m_subtitle_endtime, m_subtitle_string.c_str());
+          }
+        }
+        Sleep(250);
       }
     }
   }
@@ -1207,6 +1292,11 @@ void CAMLPlayer::Process()
   printf("CAMLPlayer::Process stopped\n");
   if (check_pid_valid(m_pid))
   {
+    if (m_subtitle_codec > 0)
+    {
+      codec_close_sub_fd(m_subtitle_codec);
+      m_subtitle_codec = -1;
+    }
     player_stop(m_pid);
     player_exit(m_pid);
     m_pid = -1;
@@ -1311,31 +1401,6 @@ bool CAMLPlayer::WaitForPlaying(int timeout_ms)
   return false;
 }
 
-bool CAMLPlayer::WaitForOpenMedia(int timeout_ms)
-{
-  while (!m_bStop && (timeout_ms > 0))
-  {
-    player_status pstatus = player_get_state(m_pid);
-    printf("CAMLPlayer::WaitForOpenMedia: %s\n", player_status2str(pstatus));
-    switch(pstatus)
-      {
-        default:
-          Sleep(500);
-          timeout_ms -= 500;
-          break;
-      case PLAYER_ERROR:
-      case PLAYER_EXIT:
-        return false;
-        break;
-      case PLAYER_INITOK:
-        return true;
-        break;
-    }
-  }
-
-  return false;
-}
-
 bool CAMLPlayer::WaitForFormatValid(int timeout_ms)
 {
   while (!m_bStop && (timeout_ms > 0))
@@ -1345,14 +1410,14 @@ bool CAMLPlayer::WaitForFormatValid(int timeout_ms)
     switch(pstatus)
     {
       default:
-        Sleep(500);
-        timeout_ms -= 500;
+        Sleep(100);
+        timeout_ms -= 100;
         break;
       case PLAYER_ERROR:
       case PLAYER_EXIT:
         return false;
         break;
-      case PLAYER_RUNNING:
+      case PLAYER_INITOK:
 
         ClearStreamInfos();
 
@@ -1441,6 +1506,8 @@ bool CAMLPlayer::WaitForFormatValid(int timeout_ms)
             memset(info, 0x00, sizeof(AMLPlayerStreamInfo));
 
             info->id = media_info.sub_info[i]->id;
+            if (media_info.sub_info[i]->sub_language[0] != 0)
+              strncpy(info->language, media_info.sub_info[i]->sub_language, 3);
             m_subtitle_streams.push_back(info);
           }
 

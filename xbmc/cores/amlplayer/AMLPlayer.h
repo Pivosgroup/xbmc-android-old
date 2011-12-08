@@ -123,7 +123,7 @@ public:
   virtual void  DoAudioWork()                                     {};
   virtual bool  OnAction(const CAction &action)                   {return false;};
 
-  virtual bool  GetCurrentSubtitle(CStdString& strSubtitle)       {strSubtitle = ""; return false;}
+  virtual bool  GetCurrentSubtitle(CStdString& strSubtitle);
   //returns a state that is needed for resuming from a specific time
   virtual CStdString GetPlayerState()                             {return "";};
   virtual bool  SetPlayerState(CStdString state)                  {return false;};
@@ -173,6 +173,11 @@ private:
   int                     m_subtitle_count;
   bool                    m_subtitle_show;
   int                     m_subtitle_delay;
+  int                     m_subtitle_codec;
+  CStdString              m_subtitle_string;
+  int64_t                 m_subtitle_bgntime;
+  int64_t                 m_subtitle_endtime;
+  CCriticalSection        m_subtitle_csection;
 
   int                     m_chapter_index;
   int                     m_chapter_count;
