@@ -919,8 +919,7 @@ void CAMLPlayer::SeekTime(__int64 seek_ms)
   // seek here
   if (check_pid_valid(m_pid))
   {
-    //WaitForPlaying(1000);
-    player_timesearch(m_pid, (0.5 + seek_ms/1000.0));
+    player_timesearch(m_pid, seek_ms/1000.0);
     WaitForSearchOK(5000);
   }
 }
@@ -1367,6 +1366,7 @@ bool CAMLPlayer::WaitForSearchOK(int timeout_ms)
       case PLAYER_EXIT:
         return false;
         break;
+      case PLAYER_RUNNING:
       case PLAYER_SEARCHOK:
         return true;
         break;
