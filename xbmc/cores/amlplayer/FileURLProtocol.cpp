@@ -103,7 +103,7 @@ int64_t CFileURLProtocol::SeekEx(URLContext *h, int64_t pos, int whence)
   else
     pos = cfile->Seek(pos, whence & ~AVSEEK_FORCE);
 
-  //CLog::Log(LOGDEBUG, "CFileURLProtocol::Seek2 pos(%lld), whence(%d)", pos, whence);
+  printf("CFileURLProtocol::SeekEx pos(%lld), whence(%d)\n", pos, whence);
 
   return pos;
 }
