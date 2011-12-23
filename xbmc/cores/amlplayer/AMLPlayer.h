@@ -29,6 +29,28 @@ typedef struct AMLChapterInfo AMLChapterInfo;
 typedef struct AMLPlayerStreamInfo AMLPlayerStreamInfo;
 typedef struct player_info player_info_t;
 
+struct AMLSubtitle
+{
+  int64_t     bgntime;
+  int64_t     endtime;
+  CStdString  string;
+};
+
+class CAMLSubTitleThread : public CThread
+{
+public:
+  CAMLSubTitleThread();
+  virtual ~CAMLSubTitleThread();
+
+  void         UpdateSubtitle(CStdString &subtitle, int64_t elapsed_ms);
+protected:
+  virtual void Process(void);
+
+  int                       m_subtitle_codec;
+  std::deque<AMLSubtitle*>  m_subtitle_strings;
+  CCriticalSection          m_subtitle_csection;
+};
+
 class CAMLPlayer : public IPlayer, public CThread
 {
 public:
@@ -178,11 +200,7 @@ private:
   int                     m_subtitle_count;
   bool                    m_subtitle_show;
   int                     m_subtitle_delay;
-  int                     m_subtitle_codec;
-  CStdString              m_subtitle_string;
-  int64_t                 m_subtitle_bgntime;
-  int64_t                 m_subtitle_endtime;
-  CCriticalSection        m_subtitle_csection;
+  CAMLSubTitleThread     *m_subtitle_thread;
 
   int                     m_chapter_index;
   int                     m_chapter_count;

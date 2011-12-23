@@ -292,6 +292,137 @@ static const char* AudioCodecName(int aformat)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////
+CAMLSubTitleThread::CAMLSubTitleThread() :
+  CThread(),
+  m_subtitle_codec(-1)
+{
+}
+
+CAMLSubTitleThread::~CAMLSubTitleThread()
+{
+  StopThread();
+}
+
+void CAMLSubTitleThread::UpdateSubtitle(CStdString &subtitle, int64_t elapsed_ms)
+{
+  CSingleLock lock(m_subtitle_csection);
+  if (m_subtitle_strings.size())
+  {
+    AMLSubtitle *amlsubtitle;
+    // remove any expired subtitles
+    std::deque<AMLSubtitle*>::iterator it = m_subtitle_strings.begin();
+    while (it != m_subtitle_strings.end())
+    {
+      amlsubtitle = *it;
+      if (elapsed_ms > amlsubtitle->endtime)
+        it = m_subtitle_strings.erase(it);
+      else
+        it++;
+    }
+
+    // find the current subtitle
+    it = m_subtitle_strings.begin();
+    while (it != m_subtitle_strings.end())
+    {
+      amlsubtitle = *it;
+      if (elapsed_ms > amlsubtitle->bgntime && elapsed_ms < amlsubtitle->endtime)
+      {
+        subtitle = amlsubtitle->string;
+        break;
+      }
+      it++;
+    }
+  }
+}
+
+void CAMLSubTitleThread::Process(void)
+{
+  CLog::Log(LOGDEBUG, "CAMLSubTitleThread::Process begin");
+
+  m_subtitle_codec = codec_open_sub_read();
+  if (m_subtitle_codec < 0)
+    CLog::Log(LOGERROR, "CAMLSubTitleThread::Process: codec_open_sub_read failed");
+
+  while (!m_bStop)
+  {
+    if (m_subtitle_codec > 0)
+    {
+      // poll sub codec, we return on timeout or when a sub gets loaded
+      codec_poll_sub_fd(m_subtitle_codec, 1000);
+      int sub_size = codec_get_sub_size_fd(m_subtitle_codec);
+      if (sub_size > 0)
+      {
+        int sub_type = 0, sub_pts = 0;
+        // calloc sub_size + 1 so we auto terminate the string
+        char *sub_buffer = (char*)calloc(sub_size + 1, 1);
+        codec_read_sub_data_fd(m_subtitle_codec, sub_buffer, sub_size);
+
+        // check subtitle header stamp
+        if ((sub_buffer[0] == 0x41) && (sub_buffer[1] == 0x4d) &&
+            (sub_buffer[2] == 0x4c) && (sub_buffer[3] == 0x55) &&
+            (sub_buffer[4] == 0xaa))
+        {
+          // 20 byte header, then subtitle string
+          if (sub_size >= 20)
+          {
+            // csection lock it now as we are diddling shared vars
+            CSingleLock lock(m_subtitle_csection);
+
+            AMLSubtitle *subtitle = new AMLSubtitle;
+
+            sub_type  = (sub_buffer[5] << 16)  | (sub_buffer[6] << 8)   | sub_buffer[7];
+            // sub_pts are in ffmpeg timebase, not ms timebase, convert it.
+            sub_pts = (sub_buffer[12] << 24) | (sub_buffer[13] << 16) | (sub_buffer[14] << 8) | sub_buffer[15];
+            subtitle->bgntime = sub_pts/ 90;
+            subtitle->endtime = subtitle->bgntime + 4000;
+
+            // skip over header, subtitles begin at sub_buffer[20]
+            subtitle->string = &sub_buffer[20];
+            free(sub_buffer);
+            // quirks
+            subtitle->string.Replace("&apos;","\'");
+            m_subtitle_strings.push_back(subtitle);
+
+            /* TODO: handle other subtitle codec types
+            // subtitle codecs
+            CODEC_ID_DVD_SUBTITLE= 0x17000,
+            CODEC_ID_DVB_SUBTITLE,
+            CODEC_ID_TEXT,  ///< raw UTF-8 text
+            CODEC_ID_XSUB,
+            CODEC_ID_SSA,
+            CODEC_ID_MOV_TEXT,
+            CODEC_ID_HDMV_PGS_SUBTITLE,
+            CODEC_ID_DVB_TELETEXT,
+            CODEC_ID_SRT,
+            CODEC_ID_MICRODVD,
+            */
+            //printf("CAMLSubTitleThread::Process: "
+            //  "sub_type(0x%x), sub_size(%d), m_subtitle_bgntime(%lld), m_subtitle_endtime(%lld), strSubtitle.c_str(%s)\n",
+            //  sub_type, sub_size-20, subtitle->bgntime, subtitle->endtime, subtitle->string.c_str());
+
+            // fixup existing endtimes so they do not exceed bgntime of previous subtitle
+            for (size_t i = 0; i < m_subtitle_strings.size() - 1; i++)
+            {
+              if (m_subtitle_strings[i]->endtime > m_subtitle_strings[i+1]->bgntime)
+                m_subtitle_strings[i]->endtime = m_subtitle_strings[i+1]->bgntime;
+            }
+          }
+        }
+      }
+    }
+    else
+    {
+      Sleep(250);
+    }
+  }
+  m_subtitle_strings.clear();
+  if (m_subtitle_codec > 0)
+    codec_close_sub_fd(m_subtitle_codec);
+  m_subtitle_codec = -1;
+
+  CLog::Log(LOGDEBUG, "CAMLSubTitleThread::Process end");
+}
+////////////////////////////////////////////////////////////////////////////////////////////
 bool CAMLPlayer::m_aml_init = false;
 
 CAMLPlayer::CAMLPlayer(IPlayerCallback &callback)
@@ -303,7 +434,6 @@ CAMLPlayer::CAMLPlayer(IPlayerCallback &callback)
   m_speed = 0;
   m_paused = false;
   m_StopPlaying = false;
-  m_subtitle_codec = -1;
   if (!m_aml_init)
   {
     //player_init();
@@ -342,10 +472,7 @@ bool CAMLPlayer::OpenFile(const CFileItem &file, const CPlayerOptions &options)
     m_video_fps_denominator = 1;
 
     m_subtitle_delay =  0;
-    m_subtitle_codec = -1;
-    m_subtitle_string=  "";
-    m_subtitle_bgntime = 0;
-    m_subtitle_endtime = 0;
+    m_subtitle_thread = NULL;
 
     m_chapter_index  =  0;
     m_chapter_count  =  0;
@@ -1052,13 +1179,12 @@ bool CAMLPlayer::GetCurrentSubtitle(CStdString& strSubtitle)
 {
   strSubtitle = "";
 
-  // force updated to m_elapsed_ms.
-  GetStatus();
-
-  CSingleLock lock(m_subtitle_csection);
-  // TODO: refactor this into a std::vector<CStdString>
-  if (m_subtitle_bgntime < m_elapsed_ms && m_subtitle_endtime > m_elapsed_ms)
-    strSubtitle = m_subtitle_string;
+  if (m_subtitle_thread)
+  {
+    // force updated to m_elapsed_ms.
+    GetStatus();
+    m_subtitle_thread->UpdateSubtitle(strSubtitle, m_elapsed_ms);
+  }
 
   return !strSubtitle.IsEmpty();
 }
@@ -1164,8 +1290,8 @@ void CAMLPlayer::Process()
           CLog::Log(LOGERROR, "%s - renderer not started", __FUNCTION__);
         }
 
-        if (m_subtitle_show)
-          m_subtitle_codec = codec_open_sub_read();
+        m_subtitle_thread = new CAMLSubTitleThread();
+        m_subtitle_thread->Create();
       }
 
       if (m_options.identify == false)
@@ -1220,52 +1346,6 @@ void CAMLPlayer::Process()
             m_StopPlaying = true;
             break;
         }
-
-        if (m_subtitle_codec > 0)
-        {
-          int sub_size = codec_get_sub_size_fd(m_subtitle_codec);
-          if (sub_size > 0)
-          {
-            int sub_type = 0, sub_pts = 0;
-            char *sub_buffer = (char*)calloc(sub_size + 1, 1);
-            codec_read_sub_data_fd(m_subtitle_codec, sub_buffer, sub_size);
-            
-            if (sub_size > 8)
-              sub_type  = (sub_buffer[5] << 16)  | (sub_buffer[6] << 8)   | sub_buffer[7];
-            if (sub_size > 15)
-              sub_pts   = (sub_buffer[12] << 24) | (sub_buffer[13] << 16) | (sub_buffer[14] << 8) | sub_buffer[15];
-
-            // csection it now as we are diddling shared vars
-            CSingleLock lock(m_subtitle_csection);
-
-            // sub_pts are in ffmpeg timebase, not ms timebase, convert it.
-            m_subtitle_bgntime = sub_pts/ 90;
-            m_subtitle_endtime = m_subtitle_bgntime + 4000;
-
-            // skip over header, subtitles begin at sub_buffer[20]
-            m_subtitle_string = &sub_buffer[20];
-            free(sub_buffer);
-            // quirks
-            m_subtitle_string.Replace("&apos;","\'");
-
-            /* TODO: handle other subtitle codec types
-            // subtitle codecs
-            CODEC_ID_DVD_SUBTITLE= 0x17000,
-            CODEC_ID_DVB_SUBTITLE,
-            CODEC_ID_TEXT,  ///< raw UTF-8 text
-            CODEC_ID_XSUB,
-            CODEC_ID_SSA,
-            CODEC_ID_MOV_TEXT,
-            CODEC_ID_HDMV_PGS_SUBTITLE,
-            CODEC_ID_DVB_TELETEXT,
-            CODEC_ID_SRT,
-            CODEC_ID_MICRODVD,
-            */
-            //printf("CAMLPlayer::Process: "
-            //  "sub_type(0x%x), m_subtitle_bgntime(%lld), m_subtitle_endtime(%lld), strSubtitle.c_str(%s)\n",
-            //  sub_type, m_subtitle_bgntime, m_subtitle_endtime, m_subtitle_string.c_str());
-          }
-        }
         Sleep(250);
       }
     }
@@ -1282,11 +1362,8 @@ void CAMLPlayer::Process()
   printf("CAMLPlayer::Process stopped\n");
   if (check_pid_valid(m_pid))
   {
-    if (m_subtitle_codec > 0)
-    {
-      codec_close_sub_fd(m_subtitle_codec);
-      m_subtitle_codec = -1;
-    }
+    delete m_subtitle_thread;
+    m_subtitle_thread = NULL;
     player_stop(m_pid);
     player_exit(m_pid);
     m_pid = -1;
