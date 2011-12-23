@@ -27,6 +27,7 @@
 
 typedef struct AMLChapterInfo AMLChapterInfo;
 typedef struct AMLPlayerStreamInfo AMLPlayerStreamInfo;
+typedef struct player_info player_info_t;
 
 class CAMLPlayer : public IPlayer, public CThread
 {
@@ -136,8 +137,12 @@ protected:
   virtual void  Process();
 
 private:
+
   int           GetVideoStreamCount();
   void          ShowMainVideo(bool show);
+
+  int           GetPlayerSerializedState(void);
+  static int    UpdatePlayerInfo(int pid, player_info_t *info);
   bool          WaitForStopped(int timeout_ms);
   bool          WaitForSearchOK(int timeout_ms);
   bool          WaitForPlaying(int timeout_ms);
@@ -188,6 +193,9 @@ private:
 
   CCriticalSection        m_aml_csection;
   static bool             m_aml_init;
+  CCriticalSection        m_aml_state_csection;
+  CEvent                  m_aml_state_change;
+  std::deque<int>         m_aml_state;
   int                     m_pid;
 
   std::vector<AMLPlayerStreamInfo*> m_video_streams;

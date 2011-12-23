@@ -104,17 +104,6 @@ static int set_sysfs_int(const char *path, int val)
   return -1;
 }
 
-static int update_player_info(int pid, player_info_t *info)
-{
-  // we get called when status changes or after update time expires
-  static player_status old_status;
-  if (old_status != info->status)
-    printf("update_player_info: %s\n", player_status2str(info->status));
-  old_status = info->status;
-
-  return 0;
-}
-
 static int media_info_dump(media_info_t* minfo)
 {
   int i = 0;
@@ -414,7 +403,7 @@ bool CAMLPlayer::OpenFile(const CFileItem &file, const CPlayerOptions &options)
     memset(&play_control, 0, sizeof(play_control_t));
     // if we do not register a callback,
     // then the libamplayer will free run checking status.
-    player_register_update_callback(&play_control.callback_fn, &update_player_info, 1000);
+    player_register_update_callback(&play_control.callback_fn, &UpdatePlayerInfo, 1000);
     // leak file_name for now.
     play_control.file_name = (char*)strdup(url.c_str());
     //play_control->nosound   = 1; // if disable audio...,must call this api
@@ -433,6 +422,8 @@ bool CAMLPlayer::OpenFile(const CFileItem &file, const CPlayerOptions &options)
     //play_control.byteiobufsize      =; // maps to av_open_input_file buffer size
     //play_control.loopbufsize        =;
     //play_control.enable_rw_on_pause =;
+    m_aml_state.clear();
+    m_aml_state.push_back(0);
     m_pid = player_start(&play_control, 0);
     if (m_pid < 0)
     {
@@ -1182,7 +1173,7 @@ void CAMLPlayer::Process()
 
       while (!m_bStop && !m_StopPlaying)
       {
-        player_status pstatus = player_get_state(m_pid);
+        player_status pstatus = (player_status)GetPlayerSerializedState();
         switch(pstatus)
         {
           case PLAYER_INITING:
@@ -1327,11 +1318,58 @@ void CAMLPlayer::ShowMainVideo(bool show)
   m_show_mainvideo = show;
 }
 
+int CAMLPlayer::GetPlayerSerializedState(void)
+{
+  CSingleLock lock(m_aml_state_csection);
+  
+  int playerstate;
+  int dequeue_size = m_aml_state.size();
+
+  if (dequeue_size > 0)
+  {
+    // serialized state is the front element.
+    playerstate = m_aml_state.front();
+    // pop the front element if there are
+    // more present.
+    if (dequeue_size > 1)
+      m_aml_state.pop_front();
+  }
+  else
+  {
+    // if queue is empty (only at startup),
+    // pull the player state directly. this should
+    // really never happen but we need to cover it.
+    playerstate = player_get_state(m_pid);
+    m_aml_state.push_back(playerstate);
+  }
+
+  return playerstate;
+}
+
+
+int CAMLPlayer::UpdatePlayerInfo(int pid, player_info_t *info)
+{
+  // we get called when status changes or after update time expires.
+  // static callback from libamplayer, since it does not pass an opaque,
+  // we have to retreve our player class reference the hard way.
+  CAMLPlayer *amlplayer = dynamic_cast<CAMLPlayer*>(g_application.m_pPlayer);
+  if (amlplayer)
+  {
+    CSingleLock lock(amlplayer->m_aml_state_csection);
+    if (amlplayer->m_aml_state.back() != info->status)
+    {
+      printf("update_player_info: %s, old state %s\n", player_status2str(info->status), player_status2str(info->last_sta));
+      amlplayer->m_aml_state.push_back(info->status);
+    }
+  }
+  return 0;
+}
+
 bool CAMLPlayer::WaitForStopped(int timeout_ms)
 {
   while (!m_bStop && (timeout_ms > 0))
   {
-    player_status pstatus = player_get_state(m_pid);
+    player_status pstatus = (player_status)GetPlayerSerializedState();
     printf("CAMLPlayer::WaitForStopped: %s\n", player_status2str(pstatus));
     switch(pstatus)
     {
@@ -1354,7 +1392,7 @@ bool CAMLPlayer::WaitForSearchOK(int timeout_ms)
 {
   while (!m_bStop && (timeout_ms > 0))
   {
-    player_status pstatus = player_get_state(m_pid);
+    player_status pstatus = (player_status)GetPlayerSerializedState();
     printf("CAMLPlayer::WaitForSearchOK: %s\n", player_status2str(pstatus));
     switch(pstatus)
     {
@@ -1362,11 +1400,11 @@ bool CAMLPlayer::WaitForSearchOK(int timeout_ms)
         Sleep(100);
         timeout_ms -= 100;
         break;
+      case PLAYER_STOPED:
       case PLAYER_ERROR:
       case PLAYER_EXIT:
         return false;
         break;
-      case PLAYER_RUNNING:
       case PLAYER_SEARCHOK:
         return true;
         break;
@@ -1380,13 +1418,13 @@ bool CAMLPlayer::WaitForPlaying(int timeout_ms)
 {
   while (!m_bStop && (timeout_ms > 0))
   {
-    player_status pstatus = player_get_state(m_pid);
+    player_status pstatus = (player_status)GetPlayerSerializedState();
     printf("CAMLPlayer::WaitForPlaying: %s\n", player_status2str(pstatus));
     switch(pstatus)
     {
       default:
-        Sleep(500);
-        timeout_ms -= 500;
+        Sleep(100);
+        timeout_ms -= 100;
         break;
       case PLAYER_ERROR:
       case PLAYER_EXIT:
@@ -1405,7 +1443,7 @@ bool CAMLPlayer::WaitForFormatValid(int timeout_ms)
 {
   while (!m_bStop && (timeout_ms > 0))
   {
-    player_status pstatus = player_get_state(m_pid);
+    player_status pstatus = (player_status)GetPlayerSerializedState();
     printf("CAMLPlayer::WaitForFormatValid: %s\n", player_status2str(pstatus));
     switch(pstatus)
     {
