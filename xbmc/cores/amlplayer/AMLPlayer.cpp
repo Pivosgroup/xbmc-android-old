@@ -348,7 +348,9 @@ void CAMLSubTitleThread::Process(void)
     if (m_subtitle_codec > 0)
     {
       // poll sub codec, we return on timeout or when a sub gets loaded
-      codec_poll_sub_fd(m_subtitle_codec, 1000);
+      // TODO: codec_poll_sub_fd has a bug in kernel driver, it trashes
+      // subs in certain conditions so we read garbage, manual poll for now.
+      //codec_poll_sub_fd(m_subtitle_codec, 1000);
       int sub_size = codec_get_sub_size_fd(m_subtitle_codec);
       if (sub_size > 0)
       {
@@ -397,7 +399,7 @@ void CAMLSubTitleThread::Process(void)
             CODEC_ID_MICRODVD,
             */
             //printf("CAMLSubTitleThread::Process: "
-            //  "sub_type(0x%x), sub_size(%d), m_subtitle_bgntime(%lld), m_subtitle_endtime(%lld), strSubtitle.c_str(%s)\n",
+            //  "sub_type(0x%x), size(%d), bgntime(%lld), endtime(%lld), string(%s)\n",
             //  sub_type, sub_size-20, subtitle->bgntime, subtitle->endtime, subtitle->string.c_str());
 
             // fixup existing endtimes so they do not exceed bgntime of previous subtitle
@@ -408,6 +410,10 @@ void CAMLSubTitleThread::Process(void)
             }
           }
         }
+      }
+      else
+      {
+        Sleep(100);
       }
     }
     else
