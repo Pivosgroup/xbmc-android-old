@@ -210,7 +210,6 @@ private:
   int                     m_view_mode;
 
   CCriticalSection        m_aml_csection;
-  static bool             m_aml_init;
   CCriticalSection        m_aml_state_csection;
   std::deque<int>         m_aml_state;
   int                     m_pid;

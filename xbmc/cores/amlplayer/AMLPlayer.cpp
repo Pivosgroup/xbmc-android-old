@@ -429,8 +429,6 @@ void CAMLSubTitleThread::Process(void)
   CLog::Log(LOGDEBUG, "CAMLSubTitleThread::Process end");
 }
 ////////////////////////////////////////////////////////////////////////////////////////////
-bool CAMLPlayer::m_aml_init = false;
-
 CAMLPlayer::CAMLPlayer(IPlayerCallback &callback)
   : IPlayer(callback),
   CThread(),
@@ -440,12 +438,6 @@ CAMLPlayer::CAMLPlayer(IPlayerCallback &callback)
   m_speed = 0;
   m_paused = false;
   m_StopPlaying = false;
-  if (!m_aml_init)
-  {
-    //player_init();
-    //printf("player init......\n");
-    m_aml_init = true;
-  }
 }
 
 CAMLPlayer::~CAMLPlayer()
