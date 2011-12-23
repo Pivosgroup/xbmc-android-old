@@ -194,7 +194,6 @@ private:
   CCriticalSection        m_aml_csection;
   static bool             m_aml_init;
   CCriticalSection        m_aml_state_csection;
-  CEvent                  m_aml_state_change;
   std::deque<int>         m_aml_state;
   int                     m_pid;
 
