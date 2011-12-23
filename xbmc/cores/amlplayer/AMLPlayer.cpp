@@ -854,7 +854,10 @@ int CAMLPlayer::GetSubtitleCount()
 
 int CAMLPlayer::GetSubtitle()
 {
-  return m_subtitle_index;
+  if (m_subtitle_show)
+    return m_subtitle_index;
+  else
+    return -1;
 }
 
 void CAMLPlayer::GetSubtitleName(int iStream, CStdString &strStreamName)
@@ -884,6 +887,12 @@ void CAMLPlayer::SetSubtitle(int iStream)
 
   m_subtitle_index = iStream;
 
+  // smells like a bug, if no showing subs and we get called
+  // to set the subtitle, we are expected to update internal state
+  // but not show the subtitle.
+  if (!m_subtitle_show)
+    return;
+
   if (check_pid_valid(m_pid))
     player_sid(m_pid, m_subtitle_streams[m_subtitle_index]->id);
 }
@@ -897,6 +906,16 @@ void CAMLPlayer::SetSubtitleVisible(bool bVisible)
 {
   m_subtitle_show = (bVisible && m_subtitle_count);
   g_settings.m_currentVideoSettings.m_SubtitleOn = bVisible;
+
+  if (m_subtitle_show)
+  {
+    // on startup, if asked to show subs and SetSubtitle has not
+    // been called, we are expected to switch/show the 1st subtitle
+    if (m_subtitle_index < 0 && m_subtitle_count)
+      m_subtitle_index = 0;
+    if (check_pid_valid(m_pid))
+      player_sid(m_pid, m_subtitle_streams[m_subtitle_index]->id);
+  }
 }
 
 int CAMLPlayer::AddSubtitle(const CStdString& strSubPath)
@@ -1181,7 +1200,7 @@ bool CAMLPlayer::GetCurrentSubtitle(CStdString& strSubtitle)
   {
     // force updated to m_elapsed_ms.
     GetStatus();
-    m_subtitle_thread->UpdateSubtitle(strSubtitle, m_elapsed_ms);
+    m_subtitle_thread->UpdateSubtitle(strSubtitle, m_elapsed_ms - m_subtitle_delay);
   }
 
   return !strSubtitle.IsEmpty();
