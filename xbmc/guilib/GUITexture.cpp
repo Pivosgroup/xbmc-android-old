@@ -313,7 +313,7 @@ bool CGUITextureBase::AllocResources()
     if (m_isAllocated != NORMAL)
     { // use our large image background loader
       CTextureArray texture;
-      if (g_largeTextureManager.GetImage(m_info.filename, texture, !IsAllocated()), m_width, m_height)
+      if (g_largeTextureManager.GetImage(m_info.filename, texture, !IsAllocated(), m_width, m_height))
       {
         m_isAllocated = LARGE;
 
