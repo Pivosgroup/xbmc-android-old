@@ -10,11 +10,12 @@ export PYTHON_LDFLAGS=-L$(SDKSTAGE)/usr/lib -lpython$(PYTHON_VERSION) -lpthread 
 export PYTHON_CPPFLAGS=-I$(SDKSTAGE)/usr/include/python$(PYTHON_VERSION)
 export PYTHON_SITE_PKG=$(SDKSTAGE)/usr/lib/python$(PYTHON_VERSION)/site-packages
 export PYTHON_NOVERSIONCHECK=no-check
+export USE_TEXTUREPACKER_NATIVE_ROOT=$(BUILDROOT)/output/host
 
 export PATH:=$(SYSROOT)/usr/bin:$(PATH)
 CONFIGURE=./configure --prefix=$(PREFIX) --host=$(HOST) \
   --enable-neon --enable-external-python --enable-gles --disable-sdl --disable-x11 --disable-xrandr \
-  --disable-optical-drive --disable-dvdcss --disable-texturepacker --enable-external-ffmpeg --enable-debug
+  --disable-optical-drive --disable-dvdcss --enable-external-ffmpeg --enable-debug
 
 all: configure
 
