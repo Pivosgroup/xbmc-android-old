@@ -533,7 +533,9 @@ int main(int argc, char* argv[])
   CmdLineArgs args(argc, (const char**)argv);
 
   // setup some defaults, dxt with lzo post packing,
+#ifdef USE_DXT
   flags = FLAGS_USE_DXT;
+#endif
 #ifdef USE_LZO_PACKING
   flags |= FLAGS_USE_LZO;
 #endif

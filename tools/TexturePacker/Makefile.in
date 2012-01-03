@@ -2,6 +2,9 @@ DEFINES += -D_LINUX -DUSE_LZO_PACKING
 ifneq ($(or $(findstring powerpc,@ARCH@),$(findstring ppc, @ARCH@)),)
 DEFINES += -DHOST_BIGENDIAN
 endif
+ifeq ($(or $(findstring arm,@ARCH@),$(findstring mips, @ARCH@)),)
+DEFINES += -DUSE_DXT
+endif
 
 CXXFLAGS+= \
   -I. \
