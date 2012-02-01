@@ -208,8 +208,8 @@ bool CJpegIO::Open(const CStdString &texturePath, unsigned int minx, unsigned in
     the gpu can hold, use the previous one.*/
     if (m_minx == 0 || m_miny == 0)
     {
-      m_minx = g_settings.m_ResInfo[g_guiSettings.m_LookAndFeelResolution].iWidth;
-      m_miny = g_settings.m_ResInfo[g_guiSettings.m_LookAndFeelResolution].iHeight;
+      m_minx = g_settings.m_ResInfo[g_guiSettings.m_LookAndFeelResolution].iScreenWidth;
+      m_miny = g_settings.m_ResInfo[g_guiSettings.m_LookAndFeelResolution].iScreenHeight;
     }
     m_original_width = m_cinfo.image_width;
     m_original_height = m_cinfo.image_height;
