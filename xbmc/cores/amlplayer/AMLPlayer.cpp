@@ -500,14 +500,14 @@ bool CAMLPlayer::OpenFile(const CFileItem &file, const CPlayerOptions &options)
     else if (url.Left(strlen("afp://")).Equals("afp://"))
     {
       // the name string needs to persist 
-      static const char *smb_name = "afp";
-      vfs_protocol.name = smb_name;
+      static const char *afp_name = "afp";
+      vfs_protocol.name = afp_name;
     }
     else if (url.Left(strlen("nfs://")).Equals("nfs://"))
     {
       // the name string needs to persist 
-      static const char *smb_name = "nfs";
-      vfs_protocol.name = smb_name;
+      static const char *nfs_name = "nfs";
+      vfs_protocol.name = nfs_name;
     }
     else if (url.Left(strlen("http://")).Equals("http://"))
     {
@@ -518,7 +518,11 @@ bool CAMLPlayer::OpenFile(const CFileItem &file, const CPlayerOptions &options)
     }
     printf("CAMLPlayer::OpenFile: URL=%s\n", url.c_str());
 
-    player_init();
+    if (player_init() != PLAYER_SUCCESS)
+    {
+      printf("player init failed\n");
+      return false;
+    }
     printf("player init......\n");
 
     // must be after player_init
@@ -556,7 +560,7 @@ bool CAMLPlayer::OpenFile(const CFileItem &file, const CPlayerOptions &options)
       return false;
     }
 
-    // setupo to spin the busy dialog until we are playing
+    // setup to spin the busy dialog until we are playing
     m_ready.Reset();
 
     g_renderManager.PreInit();
