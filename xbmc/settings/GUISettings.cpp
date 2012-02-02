@@ -259,7 +259,7 @@ void CGUISettings::Initialize()
   AddGroup(2, 8);
   CSettingsCategory* wea = AddCategory(2, "weather", 16000);
   AddInt(NULL, "weather.currentlocation", 0, 1, 1, 1, 3, SPIN_CONTROL_INT_PLUS);
-  AddDefaultAddon(wea, "weather.addon", 24027, "", ADDON_SCRIPT_WEATHER);
+  AddDefaultAddon(wea, "weather.addon", 24027, "weather.wunderground", ADDON_SCRIPT_WEATHER);
   AddString(wea, "weather.addonsettings", 21417, "", BUTTON_CONTROL_STANDARD, true);
 
   // My Music Settings
@@ -422,8 +422,8 @@ void CGUISettings::Initialize()
   // Todo: Implement test pattern for DX
   AddString(vs, "videoscreen.testpattern",226,"", BUTTON_CONTROL_STANDARD);
 #endif
-#if defined(_LINUX) && !defined(__APPLE__)
-  AddBool(NULL, "videoscreen.haslcd", 4501, false);
+#if defined(HAS_LCD)
+  AddBool(vs, "videoscreen.haslcd", 4501, false);
 #endif
 
   CSettingsCategory* ao = AddCategory(4, "audiooutput", 772);
@@ -555,7 +555,7 @@ void CGUISettings::Initialize()
   flattenTVShowOptions.insert(make_pair(20422, 2));
   AddInt(vdl, "videolibrary.flattentvshows", 20412, 1, flattenTVShowOptions, SPIN_CONTROL_TEXT);
 
-  AddBool(NULL, "videolibrary.flattenmoviesets", 22002, false);
+  AddBool(vdl, "videolibrary.groupmoviesets", 20458, false);
   AddBool(vdl, "videolibrary.updateonstartup", 22000, false);
   AddBool(vdl, "videolibrary.backgroundupdate", 22001, false);
   AddSeparator(vdl, "videolibrary.sep3");
@@ -589,7 +589,7 @@ void CGUISettings::Initialize()
   AddBool(vp, "videoplayer.usevaapi", 13426, true);
 #endif
 #ifdef HAS_DX
-  AddBool(g_sysinfo.IsVistaOrHigher() ? vp: NULL, "videoplayer.usedxva2", 13427, false);
+  AddBool(g_sysinfo.IsVistaOrHigher() ? vp: NULL, "videoplayer.usedxva2", 13427, g_sysinfo.IsVistaOrHigher() ? true : false);
 #endif
 #ifdef HAVE_LIBCRYSTALHD
   AddBool(CCrystalHD::GetInstance()->DevicePresent() ? vp: NULL, "videoplayer.usechd", 13428, true);
@@ -671,7 +671,7 @@ void CGUISettings::Initialize()
   AddInt(vid, "myvideos.selectaction", 22079, SELECT_ACTION_PLAY_OR_RESUME, myVideosSelectActions, SPIN_CONTROL_TEXT);
   AddBool(NULL, "myvideos.treatstackasfile", 20051, true);
   AddBool(vid, "myvideos.extractflags",20433, true);
-  AddBool(vid, "myvideos.filemetadata", 20419, true);
+  AddBool(vid, "myvideos.replacelabels", 20419, true);
   AddBool(NULL, "myvideos.extractthumb",20433, true);
 
   CSettingsCategory* sub = AddCategory(5, "subtitles", 287);

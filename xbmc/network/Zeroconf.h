@@ -23,6 +23,7 @@
 
 #include <string>
 #include <map>
+#include "utils/Job.h"
 
 class CCriticalSection;
 /// this class provides support for zeroconf
@@ -91,6 +92,9 @@ protected:
   //removes all services (short hand for "for i in m_service_map doRemoveService(i)")
   virtual void doStop() = 0;
 
+  // return true if the zeroconf daemon is running
+  virtual bool IsZCdaemonRunning() { return  true; }
+
 protected:
   //singleton: we don't want to get instantiated nor copied or deleted from outside
   CZeroconf();
@@ -114,4 +118,16 @@ private:
   //protects singleton creation/destruction
   static long sm_singleton_guard;
   static CZeroconf* smp_instance;
+
+  class CPublish : public CJob
+  {
+  public:
+    CPublish(const std::string& fcr_identifier, const PublishInfo& pubinfo);
+    CPublish(const tServiceMap& servmap);
+
+    bool DoWork();
+
+  private:
+    tServiceMap m_servmap;
+  };
 };

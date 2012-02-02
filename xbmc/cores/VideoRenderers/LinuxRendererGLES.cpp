@@ -1286,12 +1286,7 @@ bool CLinuxRendererGLES::RenderCapture(CRenderCapture* capture)
   unsigned char* pixels = (unsigned char*)capture->GetRenderBuffer();
   for (int i = 0; i < capture->GetWidth() * capture->GetHeight(); i++, pixels+=4)
   {
-    if (pixels[0] != pixels[2])
-    {
-      pixels[0] ^= pixels[2];
-      pixels[2] ^= pixels[0];
-      pixels[0] ^= pixels[2];
-    }
+    std::swap(pixels[0], pixels[2]);
   }
 
   capture->EndRender();
@@ -1829,9 +1824,13 @@ bool CLinuxRendererGLES::Supports(EINTERLACEMETHOD method)
   if(method == VS_INTERLACEMETHOD_AUTO)
     return true;
 
+#if defined(__i386__) || defined(__x86_64__)
   if(method == VS_INTERLACEMETHOD_DEINTERLACE
   || method == VS_INTERLACEMETHOD_DEINTERLACE_HALF
   || method == VS_INTERLACEMETHOD_SW_BLEND)
+#else
+  if(method == VS_INTERLACEMETHOD_SW_BLEND)
+#endif
     return true;
 
   return false;

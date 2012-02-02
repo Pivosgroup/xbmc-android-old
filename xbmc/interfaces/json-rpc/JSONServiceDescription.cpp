@@ -1236,7 +1236,7 @@ bool CJSONServiceDescription::parseTypeDefinition(const CVariant &value, JSONSch
     if (value.isMember("default") && IsType(value["default"], type.type))
     {
       bool ok = false;
-      if (type.enums.size() >= 0)
+      if (type.enums.size() <= 0)
         ok = true;
       // If the type has an enum definition we must make
       // sure that the default value is a valid enum value
@@ -1499,7 +1499,7 @@ bool CJSONServiceDescription::parseTypeDefinition(const CVariant &value, JSONSch
     bool ok = false;
     if (value.isMember("default") && IsType(value["default"], type.type))
     {
-      if (type.enums.size() >= 0)
+      if (type.enums.size() <= 0)
         ok = true;
       // If the type has an enum definition we must make
       // sure that the default value is a valid enum value
@@ -1654,6 +1654,10 @@ void CJSONServiceDescription::getReferencedTypes(const JSONSchemaTypeDefinition 
   // If the current type extends others type we need to check those types
   for (unsigned int index = 0; index < type.extends.size(); index++)
     getReferencedTypes(type.extends.at(index), referencedTypes);
+
+  // If the current type is a union type we need to check those types
+  for (unsigned int index = 0; index < type.unionTypes.size(); index++)
+    getReferencedTypes(type.unionTypes.at(index), referencedTypes);
 }
 
 CJSONServiceDescription::CJsonRpcMethodMap::CJsonRpcMethodMap()

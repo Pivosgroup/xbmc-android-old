@@ -52,6 +52,7 @@
 #include "utils/TimeUtils.h"
 #include "XBDateTime.h"
 #include "input/ButtonTranslator.h"
+#include "windowing/WindowingFactory.h"
 
 #include <stdio.h>
 #ifdef __APPLE__
@@ -870,7 +871,7 @@ void CGUIWindowFullScreen::FrameMove()
     int iResolution = g_graphicsContext.GetVideoResolution();
     {
       CStdString strStatus;
-      if (g_settings.m_ResInfo[iResolution].bFullScreen)
+      if (g_Windowing.IsFullScreen())
         strStatus.Format("%s %ix%i@%.2fHz - %s",
           g_localizeStrings.Get(13287), g_settings.m_ResInfo[iResolution].iScreenWidth,
           g_settings.m_ResInfo[iResolution].iScreenHeight, g_settings.m_ResInfo[iResolution].fRefreshRate,

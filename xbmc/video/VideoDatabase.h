@@ -380,11 +380,11 @@ public:
   int GetTvShowForEpisode(int idEpisode);
 
   bool LoadVideoInfo(const CStdString& strFilenameAndPath, CVideoInfoTag& details);
-  void GetMovieInfo(const CStdString& strFilenameAndPath, CVideoInfoTag& details, int idMovie = -1);
-  void GetTvShowInfo(const CStdString& strPath, CVideoInfoTag& details, int idTvShow = -1);
+  bool GetMovieInfo(const CStdString& strFilenameAndPath, CVideoInfoTag& details, int idMovie = -1);
+  bool GetTvShowInfo(const CStdString& strPath, CVideoInfoTag& details, int idTvShow = -1);
   bool GetEpisodeInfo(const CStdString& strFilenameAndPath, CVideoInfoTag& details, int idEpisode = -1);
-  void GetMusicVideoInfo(const CStdString& strFilenameAndPath, CVideoInfoTag& details, int idMVideo=-1);
-  void GetSetInfo(int idSet, CVideoInfoTag& details);
+  bool GetMusicVideoInfo(const CStdString& strFilenameAndPath, CVideoInfoTag& details, int idMVideo=-1);
+  bool GetSetInfo(int idSet, CVideoInfoTag& details);
 
   int GetPathId(const CStdString& strPath);
   int GetTvShowId(const CStdString& strPath);
@@ -698,16 +698,17 @@ private:
   int RunQuery(const CStdString &sql);
 
   /*! \brief Update routine for base path of videos
-   Only required for videodb version < 44
+   Only required for videodb version < 59
    \param table the table to update
    \param id the primary id in the given table
    \param column the basepath column to update
    \param shows whether we're fetching shows (defaults to false)
+   \param where restrict updating of items that match the where clause
    */
-  void UpdateBasePath(const char *table, const char *id, int column, bool shows = false);
+  void UpdateBasePath(const char *table, const char *id, int column, bool shows = false, const CStdString &where = "");
 
   /*! \brief Update routine for base path id of videos
-   Only required for videodb version < 52
+   Only required for videodb version < 59
    \param table the table to update
    \param id the primary id in the given table
    \param column the column of the basepath
@@ -721,7 +722,7 @@ private:
    */
   bool LookupByFolders(const CStdString &path, bool shows = false);
 
-  virtual int GetMinVersion() const { return 57; };
+  virtual int GetMinVersion() const { return 60; };
   virtual int GetExportVersion() const { return 1; };
   const char *GetBaseDBName() const { return "MyVideos"; };
 

@@ -498,9 +498,7 @@ void CDVDPlayerVideo::Process()
 
       // ask codec to do deinterlacing if possible
       EDEINTERLACEMODE mDeintMode = g_settings.m_currentVideoSettings.m_DeinterlaceMode;
-      EINTERLACEMETHOD mInt     = g_settings.m_currentVideoSettings.m_InterlaceMethod;
-      if (mInt == VS_INTERLACEMETHOD_AUTO)
-        mInt = g_renderManager.AutoInterlaceMethod();
+      EINTERLACEMETHOD mInt       = g_renderManager.AutoInterlaceMethod(g_settings.m_currentVideoSettings.m_InterlaceMethod);
 
       unsigned int     mFilters = 0;
 
@@ -733,6 +731,9 @@ void CDVDPlayerVideo::Process()
     // all data is used by the decoder, we can safely free it now
     pMsg->Release();
   }
+
+  // we need to let decoder release any picture retained resources.
+  m_pVideoCodec->ClearPicture(&picture);
 }
 
 void CDVDPlayerVideo::OnExit()
@@ -1523,7 +1524,7 @@ void CDVDPlayerVideo::CalcFrameRate()
   //and is able to calculate the correct frame duration from it
   double frameduration = m_pullupCorrection.GetFrameDuration();
 
-  if (frameduration == DVD_NOPTS_VALUE)
+  if (frameduration == DVD_NOPTS_VALUE || m_pullupCorrection.GetPatternLength() > 1)
   {
     //reset the stored framerates if no good framerate was detected
     m_fStableFrameRate = 0.0;

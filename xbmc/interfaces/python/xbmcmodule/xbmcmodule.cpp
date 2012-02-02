@@ -195,6 +195,7 @@ namespace PYXBMC
     "executebuiltin(function) -- Execute a built in XBMC function.\n"
     "\n"
     "function       : string - builtin function to execute.\n"
+    "wait           : [opt] bool - True=Wait for end of execution, False=don't wait (Default)\n"
     "\n"
     "List of functions - http://wiki.xbmc.org/?title=List_of_Built_In_Functions \n"
     "\n"
@@ -206,9 +207,10 @@ namespace PYXBMC
   PyObject* XBMC_ExecuteBuiltIn(PyObject *self, PyObject *args)
   {
     char *cLine = NULL;
-    if (!PyArg_ParseTuple(args, (char*)"s", &cLine)) return NULL;
+    bool bWait = false;
+    if (!PyArg_ParseTuple(args, (char*)"s|b", &cLine, &bWait)) return NULL;
 
-    g_application.getApplicationMessenger().ExecBuiltIn(cLine);
+    g_application.getApplicationMessenger().ExecBuiltIn(cLine, bWait);
 
     Py_INCREF(Py_None);
     return Py_None;
@@ -432,9 +434,10 @@ namespace PYXBMC
 
   PyObject* XBMC_GetFreeMem(PyObject *self, PyObject *args)
   {
-    MEMORYSTATUS stat;
-    GlobalMemoryStatus(&stat);
-    return PyInt_FromLong( stat.dwAvailPhys  / ( 1024 * 1024 ) );
+    MEMORYSTATUSEX stat;
+    stat.dwLength = sizeof(MEMORYSTATUSEX);
+    GlobalMemoryStatusEx(&stat);
+    return PyInt_FromLong( (long)(stat.ullAvailPhys  / ( 1024 * 1024 )) );
   }
 
   // getCpuTemp() method
@@ -475,6 +478,8 @@ namespace PYXBMC
     "getInfoLabel(infotag) -- Returns an InfoLabel as a string.\n"
     "\n"
     "infotag        : string - infoTag for value you want returned.\n"
+    "                 Also multiple InfoLabels are possible e.x.:\n"
+    "                 label = xbmc.getInfoLabel('$INFO[Weather.Conditions] - thats the weather')\n"
     "\n"
     "List of InfoTags - http://wiki.xbmc.org/?title=InfoLabels \n"
     "\n"
@@ -492,7 +497,17 @@ namespace PYXBMC
       CPyThreadState gilRelease;
 
       int ret = g_infoManager.TranslateString(cLine);
-      cret = g_infoManager.GetLabel(ret);
+      //doesn't seem to be a single InfoTag?
+      //try full blown GuiInfoLabel then
+      if (ret == 0)
+      {
+        CGUIInfoLabel label(cLine);
+        cret = label.GetLabel(0);
+      }
+      else
+      {
+        cret = g_infoManager.GetLabel(ret);
+      }
     }
     return Py_BuildValue((char*)"s", cret.c_str());
   }

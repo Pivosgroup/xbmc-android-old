@@ -34,6 +34,7 @@
 #include "video/VideoDatabase.h"
 #include "filesystem/Directory.h"
 #include "filesystem/File.h"
+#include "TextureCache.h"
 
 using namespace MUSIC_INFO;
 using namespace JSONRPC;
@@ -71,13 +72,15 @@ void CFileItemHandler::FillDetails(ISerializable* info, CFileItemPtr item, const
         continue;
       }
 
-      if (field == "fanart")
+      if (field == "fanart" && !item->HasPictureInfoTag())
       {
-        CStdString cachedFanArt = item->GetCachedFanart();
-        if (!cachedFanArt.IsEmpty())
-        {
-          result["fanart"] = cachedFanArt.c_str();
-        }
+        CStdString fanart;
+        if (item->HasProperty("fanart_image"))
+          fanart = item->GetProperty("fanart_image").asString();
+        if (fanart.empty())
+          fanart = item->GetCachedFanart();
+        if (!fanart.empty())
+          result["fanart"] = fanart.c_str();
 
         continue;
       }
@@ -141,13 +144,7 @@ void CFileItemHandler::HandleFileItem(const char *ID, bool allowFile, const char
 
     if (ID)
     {
-      if (stricmp(ID, "genreid") == 0)
-      {
-        CStdString genre = item->GetPath();
-        genre.TrimRight('/');
-        object[ID] = atoi(genre.c_str());
-      }
-      else if (item->HasMusicInfoTag() && item->GetMusicInfoTag()->GetDatabaseId() > 0)
+      if (item->HasMusicInfoTag() && item->GetMusicInfoTag()->GetDatabaseId() > 0)
         object[ID] = (int)item->GetMusicInfoTag()->GetDatabaseId();
       else if (item->HasVideoInfoTag() && item->GetVideoInfoTag()->m_iDbId > 0)
         object[ID] = item->GetVideoInfoTag()->m_iDbId;
@@ -155,7 +152,12 @@ void CFileItemHandler::HandleFileItem(const char *ID, bool allowFile, const char
       if (stricmp(ID, "id") == 0)
       {
         if (item->HasMusicInfoTag())
-          object["type"] = "song";
+        {
+          if (item->m_bIsFolder && item->IsAlbum())
+            object["type"] = "album";
+          else
+            object["type"] = "song";
+        }
         else if (item->HasVideoInfoTag())
         {
           switch (item->GetVideoContentType())
@@ -170,6 +172,13 @@ void CFileItemHandler::HandleFileItem(const char *ID, bool allowFile, const char
 
             case VIDEODB_CONTENT_MOVIES:
               object["type"] = "movie";
+              break;
+
+            case VIDEODB_CONTENT_TVSHOWS:
+              object["type"] = "tvshow";
+              break;
+
+            default:
               break;
           }
         }
@@ -193,6 +202,12 @@ void CFileItemHandler::HandleFileItem(const char *ID, bool allowFile, const char
 
         if (CFile::Exists(cachedThumb))
           object["thumbnail"] = cachedThumb;
+      }
+      else if (item->HasPictureInfoTag())
+      {
+        CStdString thumb = CTextureCache::Get().CheckAndCacheImage(CTextureCache::GetWrappedThumbURL(item->GetPath()));
+        if (!thumb.empty())
+          object["thumbnail"] = thumb;
       }
 
       if (!object.isMember("thumbnail"))
@@ -322,8 +337,6 @@ bool CFileItemHandler::ParseSortMethods(const CStdString &method, const bool &ig
     sortmethod = SORT_METHOD_PLAYCOUNT;
   else if (method.Equals("unsorted"))
     sortmethod = SORT_METHOD_UNSORTED;
-  else if (method.Equals("max"))
-    sortmethod = SORT_METHOD_MAX;
   else
     return false;
 
