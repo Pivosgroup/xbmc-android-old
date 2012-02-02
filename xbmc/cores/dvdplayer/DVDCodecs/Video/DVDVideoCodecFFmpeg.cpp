@@ -163,9 +163,9 @@ bool CDVDVideoCodecFFmpeg::Open(CDVDStreamInfo &hints, CDVDCodecOptions &options
   m_dllAvFilter.avfilter_register_all();
 
   m_bSoftware     = hints.software;
-  m_pCodecContext = m_dllAvCodec.avcodec_alloc_context();
 
   pCodec = NULL;
+  m_pCodecContext = NULL;
 
   if (hints.codec == CODEC_ID_H264)
   {
@@ -196,6 +196,7 @@ bool CDVDVideoCodecFFmpeg::Open(CDVDStreamInfo &hints, CDVDCodecOptions &options
 
         CLog::Log(LOGNOTICE,"CDVDVideoCodecFFmpeg::Open() Creating VDPAU(%ix%i, %d)",hints.width, hints.height, hints.codec);
         CVDPAU* vdp = new CVDPAU();
+        m_pCodecContext = m_dllAvCodec.avcodec_alloc_context3(pCodec);
         m_pCodecContext->codec_id = hints.codec;
         m_pCodecContext->width    = hints.width;
         m_pCodecContext->height   = hints.height;
@@ -207,7 +208,7 @@ bool CDVDVideoCodecFFmpeg::Open(CDVDStreamInfo &hints, CDVDCodecOptions &options
           m_pCodecContext->codec_id = CODEC_ID_NONE; // ffmpeg will complain if this has been set
           break;
         }
-        m_pCodecContext->codec_id = CODEC_ID_NONE; // ffmpeg will complain if this has been set
+        m_dllAvUtil.av_freep(&m_pCodecContext);
         CLog::Log(LOGNOTICE,"CDVDVideoCodecFFmpeg::Open() Failed to get VDPAU device");
         vdp->Release();
       }
@@ -225,6 +226,9 @@ bool CDVDVideoCodecFFmpeg::Open(CDVDStreamInfo &hints, CDVDCodecOptions &options
   }
 
   CLog::Log(LOGNOTICE,"CDVDVideoCodecFFmpeg::Open() Using codec: %s",pCodec->long_name ? pCodec->long_name : pCodec->name);
+
+  if(m_pCodecContext == NULL)
+    m_pCodecContext = m_dllAvCodec.avcodec_alloc_context3(pCodec);
 
   m_pCodecContext->opaque = (void*)this;
   m_pCodecContext->debug_mv = 0;
@@ -279,7 +283,7 @@ bool CDVDVideoCodecFFmpeg::Open(CDVDStreamInfo &hints, CDVDCodecOptions &options
   if( num_threads > 1 && !hints.software && m_pHardware == NULL // thumbnail extraction fails when run threaded
   && ( pCodec->id == CODEC_ID_H264
     || pCodec->id == CODEC_ID_MPEG4 ))
-    m_dllAvCodec.avcodec_thread_init(m_pCodecContext, num_threads);
+    m_pCodecContext->thread_count = num_threads;
 
   if (m_dllAvCodec.avcodec_open(m_pCodecContext, pCodec) < 0)
   {
@@ -458,13 +462,10 @@ int CDVDVideoCodecFFmpeg::Decode(BYTE* pData, int iSize, double dts, double pts)
     return VC_ERROR;
   }
 
-  if (len != iSize && m_pCodecContext->skip_frame != AVDISCARD_NONREF)
-    CLog::Log(LOGWARNING, "%s - avcodec_decode_video didn't consume the full packet. size: %d, consumed: %d", __FUNCTION__, iSize, len);
-
   if (!iGotPicture)
     return VC_BUFFER;
 
-  if(m_pFrame->key_frame)
+  if(m_pFrame->key_frame || m_pCodecContext->codec_id == CODEC_ID_H264) /* h264 doesn't always have keyframes + won't output before first keyframe anyway */
   {
     m_started = true;
     m_iLastKeyframe = m_pCodecContext->has_b_frames + 1;

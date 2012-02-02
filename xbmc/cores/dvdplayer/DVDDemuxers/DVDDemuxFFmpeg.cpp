@@ -284,14 +284,14 @@ bool CDVDDemuxFFmpeg::Open(CDVDInputStream* pInput)
       // try mmsh, then mmst
       CStdString strFile2;
       strFile2.Format("mmsh://%s",strFile.substr(6,strFile.size()-6).c_str());
-      result = m_dllAvFormat.av_open_input_file(&m_pFormatContext, strFile2.c_str(), iformat, FFMPEG_FILE_BUFFER_SIZE, NULL);
+      result = m_dllAvFormat.avformat_open_input(&m_pFormatContext, strFile2.c_str(), iformat, NULL);
       if (result < 0)
       {
         strFile = "mmst://";
         strFile += strFile2.Mid(7).c_str();
       } 
     }
-    if (result < 0 && m_dllAvFormat.av_open_input_file(&m_pFormatContext, strFile.c_str(), iformat, FFMPEG_FILE_BUFFER_SIZE, NULL) < 0 )
+    if (result < 0 && m_dllAvFormat.avformat_open_input(&m_pFormatContext, strFile.c_str(), iformat, NULL) < 0 )
     {
       CLog::Log(LOGDEBUG, "Error, could not open file %s", strFile.c_str());
       Dispose();
@@ -307,18 +307,10 @@ bool CDVDDemuxFFmpeg::Open(CDVDInputStream* pInput)
       m_ioContext->max_packet_size *= FFMPEG_FILE_BUFFER_SIZE / m_ioContext->max_packet_size;
 
     if(m_pInput->Seek(0, SEEK_POSSIBLE) == 0)
-      m_ioContext->is_streamed = 1;
+      m_ioContext->seekable = 0;
 
     if( iformat == NULL )
     {
-#if defined(USE_EXTERNAL_FFMPEG) && LIBAVFORMAT_VERSION_INT < AV_VERSION_INT(52,98,0)
-      // API added on: 2011-02-09
-      // Old versions of ffmpeg do not have av_probe_input_format, so we need
-      // to always probe using the lower-level functions as well.
-      const bool legacyProbing = true;
-#else
-      const bool legacyProbing = false;
-#endif
       // let ffmpeg decide which demuxer we have to open
 
       bool trySPDIFonly = (m_pInput->GetContent() == "audio/x-spdif-compressed");
@@ -331,7 +323,7 @@ bool CDVDDemuxFFmpeg::Open(CDVDInputStream* pInput)
       // want to probe for spdif (DTS or IEC 61937) compressed audio
       // specifically, or in case the file is a wav which may contain DTS or
       // IEC 61937 (e.g. ac3-in-wav) and we want to check for those formats.
-      if (legacyProbing || trySPDIFonly || (iformat && strcmp(iformat->name, "wav") == 0))
+      if (trySPDIFonly || (iformat && strcmp(iformat->name, "wav") == 0))
       {
         AVProbeData pd;
         BYTE probe_buffer[FFMPEG_FILE_BUFFER_SIZE + AVPROBE_PADDING_SIZE];
@@ -351,9 +343,6 @@ bool CDVDDemuxFFmpeg::Open(CDVDInputStream* pInput)
 
         // restore position again
         m_dllAvFormat.url_fseek(m_ioContext , 0, SEEK_SET);
-
-        if (legacyProbing && !trySPDIFonly)
-          iformat = m_dllAvFormat.av_probe_input_format(&pd, 1);
 
         // the advancedsetting is for allowing the user to force outputting the
         // 44.1 kHz DTS wav file as PCM, so that an A/V receiver can decode
@@ -424,7 +413,10 @@ bool CDVDDemuxFFmpeg::Open(CDVDInputStream* pInput)
 
 
     // open the demuxer
-    if (m_dllAvFormat.av_open_input_stream(&m_pFormatContext, m_ioContext, strFile.c_str(), iformat, NULL) < 0)
+    m_pFormatContext     = m_dllAvFormat.avformat_alloc_context();
+    m_pFormatContext->pb = m_ioContext;
+
+    if (m_dllAvFormat.avformat_open_input(&m_pFormatContext, strFile.c_str(), iformat, NULL) < 0)
     {
       CLog::Log(LOGERROR, "%s - Error, could not open file %s", __FUNCTION__, strFile.c_str());
       Dispose();
@@ -433,7 +425,7 @@ bool CDVDDemuxFFmpeg::Open(CDVDInputStream* pInput)
   }
 
   // analyse very short to speed up mjpeg playback start
-  if (iformat && (strcmp(iformat->name, "mjpeg") == 0) && m_ioContext->is_streamed)
+  if (iformat && (strcmp(iformat->name, "mjpeg") == 0) && m_ioContext->seekable == 0)
     m_pFormatContext->max_analyze_duration = 500000;
 
   // we need to know if this is matroska or avi later
@@ -773,17 +765,10 @@ DemuxPacket* CDVDDemuxFFmpeg::Read()
           {
             stream->duration = duration;
             duration = m_dllAvUtil.av_rescale_rnd(stream->duration, stream->time_base.num * AV_TIME_BASE, stream->time_base.den, AV_ROUND_NEAR_INF);
-            if ((m_pFormatContext->duration == (int64_t)AV_NOPTS_VALUE && m_pFormatContext->file_size > 0)
+            if ((m_pFormatContext->duration == (int64_t)AV_NOPTS_VALUE)
                 ||  (m_pFormatContext->duration != (int64_t)AV_NOPTS_VALUE && duration > m_pFormatContext->duration))
               m_pFormatContext->duration = duration;
           }
-        }
-
-        // check if stream seem to have grown since start
-        if(m_pFormatContext->file_size > 0 && m_pFormatContext->pb)
-        {
-          if(m_pFormatContext->pb->pos > m_pFormatContext->file_size)
-            m_pFormatContext->file_size = m_pFormatContext->pb->pos;
         }
 
         pPacket->iStreamId = pkt.stream_index; // XXX just for now
@@ -922,19 +907,6 @@ int CDVDDemuxFFmpeg::GetStreamLength()
 {
   if (!m_pFormatContext)
     return 0;
-
-  /* apperently ffmpeg messes up sometimes, so check for negative value too */
-  if (m_pFormatContext->duration == (int64_t)AV_NOPTS_VALUE || m_pFormatContext->duration < 0LL)
-  {
-    // no duration is available for us
-    // try to calculate it
-    int iLength = 0;
-    if (m_iCurrentPts != DVD_NOPTS_VALUE && m_pFormatContext->file_size > 0 && m_pFormatContext->pb && m_pFormatContext->pb->pos > 0)
-    {
-      iLength = (int)(((m_iCurrentPts * m_pFormatContext->file_size) / m_pFormatContext->pb->pos) / 1000) & 0xFFFFFFFF;
-    }
-    return iLength;
-  }
 
   return (int)(m_pFormatContext->duration / (AV_TIME_BASE / 1000));
 }
@@ -1090,7 +1062,7 @@ void CDVDDemuxFFmpeg::AddStream(int iId)
         {
           std::string fileName = "special://temp/fonts/";
           XFILE::CDirectory::Create(fileName);
-          AVMetadataTag *nameTag = m_dllAvFormat.av_metadata_get(pStream->metadata, "filename", NULL, 0);
+          AVDictionaryEntry *nameTag = m_dllAvFormat.av_metadata_get(pStream->metadata, "filename", NULL, 0);
           if (!nameTag) {
             CLog::Log(LOGERROR, "%s: TTF attachment has no name", __FUNCTION__);
             break;
@@ -1139,7 +1111,7 @@ void CDVDDemuxFFmpeg::AddStream(int iId)
     // API added on: 2010-10-15
     // (Note that while the function was available earlier, the generic
     // metadata tags were not populated by default)
-    AVMetadataTag *langTag = m_dllAvFormat.av_metadata_get(pStream->metadata, "language", NULL, 0);
+    AVDictionaryEntry *langTag = m_dllAvFormat.av_metadata_get(pStream->metadata, "language", NULL, 0);
     if (langTag)
       strncpy(m_streams[iId]->language, langTag->value, 3);
 #else
@@ -1249,7 +1221,7 @@ void CDVDDemuxFFmpeg::GetChapterName(std::string& strChapterName)
       // API added on: 2010-10-15
       // (Note that while the function was available earlier, the generic
       // metadata tags were not populated by default)
-      AVMetadataTag *titleTag = m_dllAvFormat.av_metadata_get(m_pFormatContext->chapters[chapterIdx-1]->metadata,
+      AVDictionaryEntry *titleTag = m_dllAvFormat.av_metadata_get(m_pFormatContext->chapters[chapterIdx-1]->metadata,
                                                               "title", NULL, 0);
       if (titleTag)
         strChapterName = titleTag->value;
