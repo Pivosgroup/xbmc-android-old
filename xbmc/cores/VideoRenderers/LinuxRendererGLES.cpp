@@ -615,7 +615,7 @@ void CLinuxRendererGLES::LoadShaders(int field)
         m_renderMethod = RENDER_CVREF;
         break;
       }
-      #if (defined(TARGET_AMLOGIC) || defined(__APPLE__)) && defined(__arm__)
+      #if defined(__APPLE__) && defined(__arm__)
       else if (CONF_FLAGS_FORMAT_MASK(m_iFlags) == CONF_FLAGS_FORMAT_YV12)
       {
         CLog::Log(LOGNOTICE, "GL: Using software color conversion/RGBA render method");
