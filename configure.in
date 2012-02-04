@@ -151,6 +151,12 @@ AC_ARG_WITH([arch],
   [use_arch=$withval],
   [use_arch=no])
 
+AC_ARG_WITH([platform],
+  [AS_HELP_STRING([--with-platform],
+  [use a pre-configured config for common arm boards])],
+  [use_platform=$withval],
+  [use_platform=none])
+
 AC_ARG_WITH([cpu],
   [AS_HELP_STRING([--with-cpu],
   [build with given cpu passing to ffmpeg (default is no)])],
@@ -506,31 +512,36 @@ case $host in
      ARCH="powerpc64-linux"
      AC_SUBST(ARCH_DEFINES, "-DTARGET_POSIX -DTARGET_LINUX -D_LINUX -D_POWERPC64")
      ;;
-  arm-none-linux-gnueabi*)
-     target_platform=target_amlogic
+  arm*-*-linux-gnu*)
      use_texturepacker_native=yes
-     AC_SUBST(ARCH_DEFINES, "-DTARGET_POSIX -DTARGET_LINUX -DTARGET_AMLOGIC -D_LINUX -D_ARMEL")
      ARCH="arm"
      use_arch="arm"
+     AC_SUBST(ARCH_DEFINES, "-DTARGET_POSIX -DTARGET_LINUX -D_LINUX -D_ARMEL")
+
+     #hack. why are we handling this?
+     if test "$use_cpu" = "no"; then
+       use_cpu=cortex-a8
+     fi
+     ;;
+  *)
+     AC_MSG_ERROR(unsupported host ($host))
+esac
+AC_SUBST([ARCH])
+
+case $use_platform in
+  amlogic-m1)
+     target_platform=target_amlogic
+     use_texturepacker_native=yes
+     AC_SUBST(ARCH_DEFINES, "-DTARGET_POSIX -DTARGET_LINUX -D_LINUX -D_ARMEL -DTARGET_AMLOGIC")
      use_cpu=cortex-a9
      AC_DEFINE(HAS_EGLGLES, [1], [Define if supporting EGL based GLES Framebuffer])
      CFLAGS="$CFLAGS -Wno-psabi -Wa,-mno-warn-deprecated"
      CXXFLAGS="$CXXFLAGS -Wno-psabi -Wa,-mno-warn-deprecated"
      AC_CHECK_LIB([amcodec] , [main],, AC_MSG_ERROR($missing_library))
      AC_CHECK_LIB([amplayer], [main],, AC_MSG_ERROR($missing_library))
-     #AC_CHECK_LIB([amljpeg], [amljpeg_init],, AC_MSG_ERROR($missing_library))
-     ;;
-  arm*-*-linux-gnu*)
-     use_texturepacker=no
-     ARCH="arm"
-     use_arch="arm"
-     use_cpu=cortex-a8
-     AC_SUBST(ARCH_DEFINES, "-DTARGET_POSIX -DTARGET_LINUX -D_LINUX -D_ARMEL")
      ;;
   *)
-     AC_MSG_ERROR(unsupported host ($host))
 esac
-AC_SUBST([ARCH])
 
 # platform debug flags
 if test "$use_debug" = "yes"; then
@@ -1564,6 +1575,10 @@ else
     SDL_DEFINES="-DHAS_SDL_2D"
     USE_OPENGL=0
   fi
+fi
+
+if test "$use_platform" != "none"; then
+    final_message="$final_message\n  Platform:\t$use_platform"
 fi
 
 if test "$use_alsa" = "yes"; then
