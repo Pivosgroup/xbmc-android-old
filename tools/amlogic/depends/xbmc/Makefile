@@ -15,7 +15,7 @@ export USE_TEXTUREPACKER_NATIVE_ROOT=$(BUILDROOT)/output/host
 export PATH:=$(SYSROOT)/usr/bin:$(PATH)
 CONFIGURE=./configure --prefix=$(PREFIX) --host=$(HOST) \
   --enable-neon --enable-external-python --enable-gles --disable-sdl --disable-x11 --disable-xrandr \
-  --disable-optical-drive --disable-dvdcss --enable-external-ffmpeg --enable-debug \
+  --disable-dvdcss --enable-external-ffmpeg --enable-debug \
   --with-platform=amlogic-m1
 
 all: configure
