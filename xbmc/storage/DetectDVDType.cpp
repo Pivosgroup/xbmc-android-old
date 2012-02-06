@@ -89,7 +89,7 @@ void CDetectDVDMedia::OnStartup()
 void CDetectDVDMedia::Process()
 {
 // for apple - currently disable this check since cdio will return null if no media is loaded
-#ifndef __APPLE__
+#ifndef __APPLE__ && !defined(TARGET_AMLOGIC)
   //Before entering loop make sure we actually have a CDrom drive
   CdIo_t *p_cdio = m_cdio->cdio_open(NULL, DRIVER_DEVICE);
   if (p_cdio == NULL)
@@ -428,7 +428,10 @@ DWORD CDetectDVDMedia::GetTrayState()
     m_cdio->cdio_destroy(cdio);
   }
   else
+  {
+    m_dwLastTrayState = DRIVE_NOT_READY;
     return DRIVE_NOT_READY;
+  }
 
 #endif // USING_CDIO78
 #endif // _LINUX
