@@ -3,16 +3,16 @@
 SCRIPT_PATH=$(cd `dirname $0` && pwd)
 
 #Edit these
-NDKROOT=/home/speedy/Documents-big/xbmc/android-ndk-r6b
-TARBALLS=/home/speedy/Documents-big/xbmc/android-tarballs
-TOOLCHAIN=/home/speedy/Documents-big/xbmc/xbmc-android-toolchain
-XBMCPREFIX=/home/speedy/Documents-big/xbmc/xbmc-master
+NDKROOT=
+TARBALLS=
+TOOLCHAIN=
+XBMCPREFIX=
 
 #
 #
 sudo mkdir -p $XBMCPREFIX $TARBALLS
 sudo chmod 775 $XBMCPREFIX $TARBALLS
-sudo chown -R speedy:speedy $XBMCPREFIX $TARBALLS
+sudo chown -R $(USER):$(USER) $XBMCPREFIX $TARBALLS
 mkdir -p $XBMCPREFIX/lib $XBMCPREFIX/include
 
 #
