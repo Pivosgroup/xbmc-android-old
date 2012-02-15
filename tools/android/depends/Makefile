@@ -7,7 +7,7 @@ SUBDIRS = \
 	pcre expat libiconv gettext readline sqlite3 libgpg-error \
 	libgcrypt bzip2 liblzo2 freetype2 fontconfig \
 	openssl curl libssh2 \
-	libjpeg-turbo tiff jasper \
+	ncurses mysql libjpeg-turbo tiff jasper \
 	libogg libvorbis libflac libid3tag libmad fribidi libmpeg2 \
 	libass libcdio libsamplerate \
 	libmodplug librtmp libxml2 yajl \
