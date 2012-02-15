@@ -1,4 +1,4 @@
-#                                               -*- Autoconf -*-
+                                             -*- Autoconf -*-
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.59)
@@ -512,7 +512,7 @@ case $host in
      ARCH="powerpc64-linux"
      AC_SUBST(ARCH_DEFINES, "-DTARGET_POSIX -DTARGET_LINUX -D_LINUX -D_POWERPC64")
      ;;
-  arm*-*-linux-gnu*)
+  arm*-linux-*)
      use_texturepacker_native=yes
      ARCH="arm"
      use_arch="arm"
@@ -529,9 +529,19 @@ esac
 AC_SUBST([ARCH])
 
 case $use_platform in
+  android)
+     target_platform=target_android
+     use_texturepacker_native=yes
+     webserver_checkdepends=yes
+     AC_SUBST(ARCH_DEFINES, "-DTARGET_POSIX -DTARGET_LINUX -D_LINUX -D_ARMEL -DTARGET_ANDROID")
+     use_cpu=cortex-a9
+     AC_DEFINE(HAS_EGLGLES, [1], [Define if supporting EGL based GLES Framebuffer])
+     CFLAGS="$CFLAGS -Wno-psabi -Wa,-mno-warn-deprecated"
+     ;;
   amlogic-m1)
      target_platform=target_amlogic
      use_texturepacker_native=yes
+     webserver_checkdepends=yes
      AC_SUBST(ARCH_DEFINES, "-DTARGET_POSIX -DTARGET_LINUX -D_LINUX -D_ARMEL -DTARGET_AMLOGIC")
      use_cpu=cortex-a9
      AC_DEFINE(HAS_EGLGLES, [1], [Define if supporting EGL based GLES Framebuffer])
@@ -873,7 +883,7 @@ XB_FIND_SONAME([MPEG2],       [mpeg2])
 
 # WebServer
 if test "$use_webserver" = "yes"; then
-if test "$target_platform" = "target_amlogic"; then
+if test "$webserver_checkdepends" = "yes"; then
   AC_CHECK_LIB([gpg-error],   [main],, AC_MSG_ERROR($missing_library))
   AC_CHECK_LIB([gcrypt],      [main],, AC_MSG_ERROR($missing_library))
 fi

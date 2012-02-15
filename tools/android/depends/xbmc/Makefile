@@ -8,7 +8,7 @@ export CXXFLAGS+=-isystem$(SDKSTAGE)/include/linux_user
 CONFIGURE=./configure --prefix=$(PREFIX) --host=$(HOST) \
   --enable-neon --enable-external-python --enable-gles --enable-external-ffmpeg --enable-debug \
   --disable-sdl --disable-x11 --disable-xrandr --disable-samba --disable-dvdcss \
-  --with-platform=amlogic-m1
+  --with-platform=android
 
 all: configure
 
