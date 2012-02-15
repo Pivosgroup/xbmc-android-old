@@ -8,7 +8,9 @@ SOURCE=$(LIBNAME)-$(VERSION)
 ARCHIVE=$(SOURCE).tar.bz2
 
 # configuration settings
-CONFIGURE=./configure --prefix=$(PREFIX) --host=$(HOST)
+CONFIGURE=./configure --prefix=$(PREFIX) --host=$(HOST) \
+  --disable-languages \
+  --disable-nls
 
 LIBDYLIB=$(SOURCE)/$(LIBNAME)/.libs/$(LIBNAME).so
 
