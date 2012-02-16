@@ -10,7 +10,8 @@ ARCHIVE_TOOL=unzip
 ARCHIVE_TOOL_FLAGS=
 
 # configuration settings
-CONFIGURE=./configure --prefix=$(PREFIX) --host=$(HOST)
+CONFIGURE=cp -f $(PREFIX)/share/automake-1.11/config.sub $(PREFIX)/share/automake-1.11/config.guess acaux/ ;\
+          ./configure --prefix=$(PREFIX) --host=$(HOST)
 
 LIBDYLIB=$(SOURCE)/$(LIBNAME)/.libs/$(LIBNAME).so
 

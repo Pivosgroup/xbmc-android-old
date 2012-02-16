@@ -8,8 +8,8 @@ SOURCE=$(LIBNAME)-$(VERSION)
 ARCHIVE=$(LIBNAME)-$(VERSION).tar.gz
 
 # configuration settings
-CONFIGURE=./configure --prefix=$(PREFIX) --host=$(HOST) \
-  --with-jpeg8
+CONFIGURE=cp -f $(PREFIX)/share/automake-1.11/config.sub $(PREFIX)/share/automake-1.11/config.guess .; \
+          ./configure --prefix=$(PREFIX) --host=$(HOST) --with-jpeg8
 
 LIBDYLIB=$(SOURCE)/.libs/lib$(LIBNAME).so
 

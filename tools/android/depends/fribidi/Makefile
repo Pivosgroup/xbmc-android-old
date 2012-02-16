@@ -8,9 +8,8 @@ SOURCE=$(LIBNAME)-$(VERSION)
 ARCHIVE=$(SOURCE).tar.gz
 
 # configuration settings
-CONFIGURE=./configure --prefix=$(PREFIX) --host=$(HOST) \
-  --disable-docs --enable-malloc \
-  gl_cv_header_working_stdint_h=yes
+CONFIGURE=cp -f $(PREFIX)/share/automake-1.11/config.sub $(PREFIX)/share/automake-1.11/config.guess .; \
+          ./configure --prefix=$(PREFIX) --host=$(HOST) --disable-docs --enable-malloc gl_cv_header_working_stdint_h=yes
 
 LIBDYLIB=$(SOURCE)/.libs/lib$(LIBNAME).so
 

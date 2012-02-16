@@ -9,8 +9,9 @@ ARCHIVE=$(SOURCE).tar.gz
 BASE_URL=http://ftp.gnu.org/pub/gnu/libiconv
 
 # configuration settings
-CONFIGURE=./configure --prefix=$(PREFIX) --host=$(HOST) \
-          gl_cv_header_working_stdint_h=yes
+CONFIGURE=cp -f $(PREFIX)/share/automake-1.11/config.sub $(PREFIX)/share/automake-1.11/config.guess build-aux/; \
+          cp -f $(PREFIX)/share/automake-1.11/config.sub $(PREFIX)/share/automake-1.11/config.guess libcharset/build-aux/; \
+          ./configure --prefix=$(PREFIX) --host=$(HOST) gl_cv_header_working_stdint_h=yes
 
 LIBDYLIB=$(SOURCE)/$(LIBNAME)/.libs/$(LIBNAME).so
 

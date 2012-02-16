@@ -10,7 +10,8 @@ ARCHIVE=$(SOURCE).tar.gz
 # configuration settings
 export CXXFLAGS+=-DSQLITE_ENABLE_COLUMN_METADATA=1
 export TCLLIBDIR=/dev/null
-CONFIGURE=./configure --prefix=$(PREFIX) --host=$(HOST) --enable-shared \
+CONFIGURE=cp -f $(PREFIX)/share/automake-1.11/config.sub $(PREFIX)/share/automake-1.11/config.guess .; \
+          ./configure --prefix=$(PREFIX) --host=$(HOST) --enable-shared \
   --enable-threadsafe --disable-tcl --disable-readline \
 
 LIBDYLIB=$(SOURCE)/.libs/lib$(LIBNAME).so

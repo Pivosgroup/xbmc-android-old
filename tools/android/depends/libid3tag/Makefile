@@ -9,7 +9,8 @@ ARCHIVE=$(SOURCE).tar.gz
 
 # configuration settings
 
-CONFIGURE=./configure --prefix=$(PREFIX) --build=$(BUILD) --host=$(HOST) \
+CONFIGURE=cp -f $(PREFIX)/share/automake-1.11/config.sub $(PREFIX)/share/automake-1.11/config.guess .; \
+          ./configure --prefix=$(PREFIX) --build=$(BUILD) --host=$(HOST) \
 
 LIBDYLIB=$(SOURCE)/.libs/libid3tag.so
 

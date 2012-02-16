@@ -10,7 +10,8 @@ BASE_URL=http://curl.haxx.se/download/
 CFLAGS+=-DANDROID
 
 # configuration settings
-CONFIGURE=./configure --prefix=$(PREFIX) --host=$(HOST) --without-libssh2 \
+CONFIGURE=cp -f $(PREFIX)/share/automake-1.11/config.sub $(PREFIX)/share/automake-1.11/config.guess .; \
+          ./configure --prefix=$(PREFIX) --host=$(HOST) --without-libssh2 \
 ac_cv_file__dev_urandom=yes \
 
 LIBDYLIB=$(SOURCE)/.libs/(LIBNAME).so
