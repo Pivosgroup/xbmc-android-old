@@ -22,6 +22,7 @@
 #ifndef _MYSQLDATASET_H
 #define _MYSQLDATASET_H
 
+#if defined(HAVE_LIBMYSQLCLIENT)
 #include <stdio.h>
 #include "dataset.h"
 #include "mysql/mysql.h"
@@ -179,4 +180,5 @@ or insert() operations default = false) */
   virtual bool dropIndex(const char *table, const char *index);
 };
 } //namespace
+#endif
 #endif

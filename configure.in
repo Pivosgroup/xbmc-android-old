@@ -626,7 +626,7 @@ elif test "$use_arch" = "arm"; then
         use_cpu=cortex-a8])
   else
     # Compile for ARMv7a architecture, CortexA8/CortexA9 cpu and check for enabled NEON coprocessor
-    CFLAGS="$CFLAGS -Wa,-march=armv7a -mcpu=$use_cpu"
+    CFLAGS="$CFLAGS -Wa,-march=armv7-a -mcpu=$use_cpu"
     CXXFLAGS="$CXXFLAGS -Wa,-march=armv7a -mcpu=$use_cpu"
     if test "$use_neon" = "yes"; then 
       CFLAGS="$CFLAGS -mfpu=neon -mvectorize-with-neon-quad"
@@ -712,15 +712,19 @@ else
 fi
 
 # platform common libraries
+if test "$target_platform" != "target_android" ; then
 AC_CHECK_PROG(MYSQL_CONFIG, mysql_config, "yes", "no")
 if test $MYSQL_CONFIG = "yes"; then
   INCLUDES="$INCLUDES `mysql_config --include`"
   MYSQL_LIBS=`mysql_config --libs`
   LIBS="$LIBS $MYSQL_LIBS"
   AC_SUBST(MYSQL_LIBS)
+  AC_CHECK_LIB([mysqlclient], [main],, AC_MSG_ERROR($missing_library))
 else
   AC_MSG_ERROR($missing_program)
 fi
+fi
+
 AC_CHECK_HEADER([ass/ass.h],, AC_MSG_ERROR($missing_library))
 AC_CHECK_HEADER([mpeg2dec/mpeg2.h],, AC_MSG_ERROR($missing_library))
 AC_CHECK_HEADER([mpeg2dec/mpeg2convert.h],, AC_MSG_ERROR($missing_library),
@@ -758,7 +762,6 @@ AC_CHECK_LIB([lzo2],        [main],, AC_MSG_ERROR($missing_library))
 AC_CHECK_LIB([z],           [main],, AC_MSG_ERROR($missing_library))
 AC_CHECK_LIB([crypto],      [main],, AC_MSG_ERROR($missing_library))
 AC_CHECK_LIB([ssl],         [main],, AC_MSG_ERROR($missing_library))
-AC_CHECK_LIB([mysqlclient], [main],, AC_MSG_ERROR($missing_library))
 AC_CHECK_LIB([ssh],         [sftp_tell64],, AC_MSG_RESULT([Could not find suitable version of libssh]))
 AC_CHECK_LIB([bluetooth],   [hci_devid],, AC_MSG_RESULT([Could not find suitable version of libbluetooth]))
 AC_CHECK_LIB([yajl],        [main],, AC_MSG_ERROR($missing_library))
@@ -783,9 +786,11 @@ PKG_CHECK_MODULES([PCRECPP],    [libpcrecpp],
   [INCLUDES="$INCLUDES $PCRECPP_CFLAGS"; LIBS="$LIBS $PCRECPP_LIBS"]; \
   AC_DEFINE([HAVE_LIBPCRECPP],[1],["Define to 1 if libpcrecpp is installed"]),
   AC_MSG_ERROR($missing_library))
+if test "$target_platform" != "target_android" ; then
 PKG_CHECK_MODULES([CDIO],       [libcdio],
   [INCLUDES="$INCLUDES $CDIO_CFLAGS"; LIBS="$LIBS $CDIO_LIBS"],
   AC_MSG_ERROR($missing_library))
+fi
 PKG_CHECK_MODULES([SAMPLERATE], [samplerate],
   [INCLUDES="$INCLUDES $SAMPLERATE_CFLAGS"; LIBS="$LIBS $SAMPLERATE_LIBS"],
   AC_MSG_ERROR($missing_library))

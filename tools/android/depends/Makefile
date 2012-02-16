@@ -7,9 +7,9 @@ SUBDIRS = \
 	pcre expat libiconv gettext readline sqlite3 libgpg-error \
 	libgcrypt bzip2 liblzo2 freetype2 fontconfig \
 	openssl curl libssh2 \
-	ncurses mysql libjpeg-turbo tiff jasper libpng \
+	libjpeg-turbo tiff jasper libpng \
 	libogg libvorbis libflac libid3tag libmad fribidi libmpeg2 \
-	libass libcdio libsamplerate \
+	libass libsamplerate \
 	libmodplug librtmp libxml2 yajl \
 	python26 \
 	boost xbmc \

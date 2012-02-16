@@ -11,6 +11,7 @@ ARCHIVE=$(SOURCE).tar.gz
 CONFIGURE=cp -f $(PREFIX)/share/automake-1.11/config.sub $(PREFIX)/share/automake-1.11/config.guess .; \
           ./configure --prefix=$(PREFIX) --host=$(HOST) --build=$(BUILD) \
 	--enable-thread-safe-client --with-extra-charsets=complex \
+	--with-named-thread-libs=-libc --with-named-curses-libs=-lncurses \
 	--without-readline --without-libedit \
 	--without-server --without-bench --without-docs --without-man
 
