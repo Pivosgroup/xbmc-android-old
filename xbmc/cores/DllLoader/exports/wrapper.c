@@ -26,7 +26,9 @@
 //
 #include <sys/types.h>
 #include <sys/stat.h>
+#if !defined(TARGET_ANDROID)
 #include <sys/statvfs.h>
+#endif
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -37,7 +39,7 @@
 #include <dirent.h>
 #endif
 
-#if defined(__APPLE__) || defined(__FreeBSD__)
+#if defined(__APPLE__) || defined(__FreeBSD__) || defined(TARGET_ANDROID)
 typedef int64_t   off64_t;
 typedef off_t     __off_t;
 typedef off64_t   __off64_t;
