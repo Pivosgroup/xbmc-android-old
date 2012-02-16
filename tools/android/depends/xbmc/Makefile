@@ -15,7 +15,7 @@ export CXXFLAGS+=-isystem$(SDKSTAGE)/include/linux_user
 CONFIGURE=./configure --prefix=$(PREFIX) --host=$(HOST) \
   --enable-neon --enable-gles --enable-debug \
   --disable-sdl --disable-x11 --disable-xrandr --disable-samba --disable-dvdcss \
-  --disable-webserver \
+  --disable-optical-drive --disable-webserver \
   --with-platform=android
 
 all: configure
