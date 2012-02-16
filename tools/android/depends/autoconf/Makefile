@@ -2,7 +2,8 @@ include ../Makefile.include
 
 # lib name, version
 LIBNAME=autoconf
-VERSION=2.63
+VERSION=2.68
+BASE_URL=http://ftp.gnu.org/gnu/autoconf/
 SOURCE=$(LIBNAME)-$(VERSION)
 ARCHIVE=$(SOURCE).tar.gz
 
@@ -24,9 +25,9 @@ $(SOURCE): $(TARBALLS_LOCATION)/$(ARCHIVE)
 	-rm -rf $(SOURCE)
 	$(ARCHIVE_TOOL) $(ARCHIVE_TOOL_FLAGS) $(TARBALLS_LOCATION)/$(ARCHIVE)
 	echo $(SOURCE) > .gitignore
-	cd $(SOURCE); $(CONFIGURE)
 
 $(LIBDYLIB): $(SOURCE)
+	cd $(SOURCE); $(CONFIGURE)
 	make -j $(JOBS) -C $(SOURCE)
 
 .installed:

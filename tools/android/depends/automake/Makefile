@@ -2,7 +2,8 @@ include ../Makefile.include
 
 # lib name, version
 LIBNAME=automake
-VERSION=1.10.3
+VERSION=1.11.3
+BASE_URL=http://ftp.gnu.org/gnu/automake
 SOURCE=$(LIBNAME)-$(VERSION)
 ARCHIVE=$(SOURCE).tar.gz
 
