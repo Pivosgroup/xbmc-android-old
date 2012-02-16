@@ -15,5 +15,6 @@ export CPPFLAGS=$(CFLAGS)
 export CXXFLAGS=$(CFLAGS)
 export LDFLAGS=$(ARCH_FLAGS) -L$(XBMCPREFIX)/lib
 export LIBS=-lstdc++
+export PKG_CONFIG_PATH=$(XBMCPREFIX)/lib/pkgconfig
 export PATH:=${XBMCPREFIX}/bin:${TOOLCHAIN}/bin:$(PATH)
 export PREFIX=$(XBMCPREFIX)
