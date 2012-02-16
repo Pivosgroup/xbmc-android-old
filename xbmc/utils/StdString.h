@@ -7,6 +7,13 @@
 #define va_copy(dst, src) ((dst) = (src))
 #endif
 
+#if defined(TARGET_ANDROID)
+namespace std
+{
+  typedef basic_string<wchar_t> wstring;
+}
+#endif
+
 // =============================================================================
 //  FILE:  StdString.h
 //  AUTHOR:  Joe O'Leary (with outside help noted in comments)
